@@ -26,10 +26,10 @@ jobs:
         brew update
         
         # Install required build tools and libraries
-        brew install nasm yasm pkg-config
+        brew install nasm yasm pkgconf
         
         # Install codec libraries (core dependencies)
-        brew install x264 x265 libvpx opus libvorbis libtheora lame
+        brew install x264 x265 libvpx opus libvorbis theora lame
         brew install libass freetype fontconfig fribidi
         
         # Install additional libraries (with fallback for missing packages)
@@ -42,7 +42,7 @@ jobs:
         brew install libxml2 || echo "libxml2 not available, skipping"
         
         # Video processing libraries (may not be available on all systems)
-        brew install vid.stab || echo "vid.stab not available, skipping"
+        brew install vidstab || echo "vidstab not available, skipping"
         brew install zimg || echo "zimg not available, skipping"
         
     - name: Setup iOS SDK paths
