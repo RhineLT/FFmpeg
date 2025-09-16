@@ -1,0 +1,112 @@
+name: Build FFmpeg 8.0 for iOS ARM64 - Simplified
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-13
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: '15.0'
+        
+    - name: Install basic dependencies
+      run: |
+        brew update
+        brew install nasm yasm pkg-config
+        
+    - name: Install codec libraries (essential only)
+      run: |
+        # Core codecs (same as your v5.1.2 config)
+        brew install x264 x265 libvpx opus vorbis theora lame
+        brew install libass freetype fontconfig fribidi
+        
+        # Additional libraries (if available)
+        brew install sox || true
+        brew install snappy || true
+        brew install webp || true
+        brew install libxml2 || true
+        
+    - name: Configure and build FFmpeg
+      run: |
+        export XCODE_PATH=$(xcode-select -p)
+        export IOS_SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
+        export IOS_MIN_VERSION="12.0"
+        
+        mkdir -p build-ios
+        cd build-ios
+        
+        ../configure \
+            --prefix=/var/jb/usr \
+            --enable-cross-compile \
+            --target-os=darwin \
+            --arch=arm64 \
+            --cc="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang" \
+            --cxx="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++" \
+            --nm="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/nm" \
+            --ar="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/ar" \
+            --ranlib="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/ranlib" \
+            --strip="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/strip" \
+            --sysroot="$IOS_SDK_PATH" \
+            --extra-cflags="-arch arm64 -mios-version-min=$IOS_MIN_VERSION" \
+            --extra-ldflags="-arch arm64 -mios-version-min=$IOS_MIN_VERSION" \
+            --enable-shared \
+            --enable-pthreads \
+            --enable-version3 \
+            --enable-gpl \
+            --enable-ffplay \
+            --enable-libx264 \
+            --enable-libx265 \
+            --enable-libvpx \
+            --enable-libopus \
+            --enable-libvorbis \
+            --enable-libtheora \
+            --enable-libmp3lame \
+            --enable-libass \
+            --enable-libfreetype \
+            --enable-libfontconfig \
+            --enable-libfribidi \
+            --enable-libwebp \
+            --enable-libxml2 \
+            --disable-libbluray \
+            --disable-libjack \
+            --disable-indev=jack \
+            --disable-xlib \
+            --disable-audiotoolbox \
+            --disable-debug \
+            --disable-doc \
+            --disable-static
+            
+        make -j$(sysctl -n hw.ncpu)
+        
+    - name: Package build artifacts
+      run: |
+        cd build-ios
+        make install DESTDIR=$PWD/install
+        
+        # Create distribution archive
+        mkdir -p ffmpeg-8.0-ios-arm64
+        cp -r install/var/jb/usr/* ffmpeg-8.0-ios-arm64/
+        
+        # Add version information
+        echo "FFmpeg 8.0 for iOS ARM64 (Built $(date))" > ffmpeg-8.0-ios-arm64/VERSION.txt
+        
+        # Create tarball
+        tar -czf ffmpeg-8.0-ios-arm64.tar.gz ffmpeg-8.0-ios-arm64/
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ffmpeg-8.0-ios-arm64-build
+        path: build-ios/ffmpeg-8.0-ios-arm64.tar.gz
+        retention-days: 30
