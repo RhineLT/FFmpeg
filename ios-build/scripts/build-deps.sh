@@ -35,25 +35,23 @@ fetch() {
   fi
 }
 
-echo "[deps] Build SDL2 (for ffplay UI)"
-if [ ! -f "$IOS_PREFIX/lib/libSDL2.a" ]; then
-  rm -rf SDL && git clone --depth 1 https://github.com/libsdl-org/SDL.git
-  pushd SDL >/dev/null
-  xcodebuild -project Xcode-iOS/SDL/SDL.xcodeproj \
-    -scheme SDL \
-    -configuration Release \
-    -sdk iphoneos \
-    -arch arm64 \
-    IPHONEOS_DEPLOYMENT_TARGET=${IOS_MIN_VERSION} \
-    build | xcpretty || true
-  mkdir -p "$IOS_PREFIX/lib" "$IOS_PREFIX/include/SDL2"
-  if [ -f "build/Release-iphoneos/libSDL2.a" ]; then
-    cp -f build/Release-iphoneos/libSDL2.a "$IOS_PREFIX/lib/"
-  else
-    cp -f build/*-iphoneos/libSDL2.a "$IOS_PREFIX/lib/" 2>/dev/null || true
-  fi
-  cp -R include/* "$IOS_PREFIX/include/SDL2/"
-  popd >/dev/null
+# Build SDL2
+echo "[deps] Build SDL2"
+git clone --depth 1 https://github.com/libsdl-org/SDL.git SDL2
+cd SDL2
+# Use iOS build system instead of Xcode project
+mkdir build
+cd build
+cmake .. -DCMAKE_SYSTEM_NAME=iOS \
+         -DCMAKE_OSX_ARCHITECTURES=arm64 \
+         -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+         -DCMAKE_OSX_SYSROOT=iphoneos \
+         -DCMAKE_INSTALL_PREFIX=$IOS_PREFIX \
+         -DSDL_SHARED=OFF \
+         -DSDL_STATIC=ON
+make -j$(nproc)
+make install
+cd ../..
   cat > "$IOS_PREFIX/lib/pkgconfig/sdl2.pc" <<PC
 prefix=$IOS_PREFIX
 exec_prefix=\${prefix}
@@ -164,7 +162,8 @@ if [ ! -f "$IOS_PREFIX/lib/libmp3lame.a" ]; then
     --prefix="$IOS_PREFIX" \
     --enable-static \
     --disable-shared \
-    --disable-frontend
+    --disable-frontend \
+    CFLAGS="$CFLAGS -DHAVE_STRING_H=1 -D_GNU_SOURCE"
   make -j"$NPROC" && make install
   popd >/dev/null
   cat > "$IOS_PREFIX/lib/pkgconfig/lame.pc" <<PC
