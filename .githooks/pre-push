@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Validate GitHub Actions workflows before push
+set -euo pipefail
+
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+"$REPO_ROOT/ios-build/ci/validate-workflows.sh" "$REPO_ROOT"
+
+echo "[pre-push] GitHub Actions workflow validation passed. Proceeding with push."
