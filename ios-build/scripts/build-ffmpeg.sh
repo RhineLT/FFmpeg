@@ -21,6 +21,12 @@ export LDFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MI
 export PKG_CONFIG_PATH="$IOS_PREFIX/lib/pkgconfig"
 export PKG_CONFIG_LIBDIR="$IOS_PREFIX/lib/pkgconfig"
 
+# Debug pkg-config for libass
+echo "Debug: PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
+ls -la "$IOS_PREFIX/lib/pkgconfig/" || true
+pkg-config --exists libass && echo "libass found" || echo "libass NOT found"
+pkg-config --modversion libass || true
+
 BUILD_DIR=build-ios
 rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
 pushd "$BUILD_DIR" >/dev/null

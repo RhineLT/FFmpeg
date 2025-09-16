@@ -243,11 +243,14 @@ if [ ! -f "$IOS_PREFIX/lib/libopus.a" ]; then
   rm -rf opus && git clone --depth 1 https://github.com/xiph/opus.git
   pushd opus >/dev/null
   ./autogen.sh
+  CFLAGS="$CFLAGS -DOPUS_ARM_NEON_INTR" \
   ./configure \
     --host=arm-apple-darwin \
     --prefix="$IOS_PREFIX" \
     --enable-static \
-    --disable-shared
+    --disable-shared \
+    --disable-asm \
+    --disable-intrinsics
   make -j"$NPROC" && make install
   popd >/dev/null
   if [ ! -f "$IOS_PREFIX/lib/pkgconfig/opus.pc" ]; then
