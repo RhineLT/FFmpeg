@@ -37,21 +37,22 @@ fetch() {
 
 # Build SDL2
 echo "[deps] Build SDL2"
-git clone --depth 1 https://github.com/libsdl-org/SDL.git SDL2
-cd SDL2
-# Use iOS build system instead of Xcode project
-mkdir build
-cd build
-cmake .. -DCMAKE_SYSTEM_NAME=iOS \
-         -DCMAKE_OSX_ARCHITECTURES=arm64 \
-         -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
-         -DCMAKE_OSX_SYSROOT=iphoneos \
-         -DCMAKE_INSTALL_PREFIX=$IOS_PREFIX \
-         -DSDL_SHARED=OFF \
-         -DSDL_STATIC=ON
-make -j$(nproc)
-make install
-cd ../..
+if [ ! -f "$IOS_PREFIX/lib/libSDL2.a" ]; then
+  rm -rf SDL2 && git clone --depth 1 https://github.com/libsdl-org/SDL.git SDL2
+  pushd SDL2 >/dev/null
+  # Use iOS build system instead of Xcode project
+  mkdir build
+  cd build
+  cmake .. -DCMAKE_SYSTEM_NAME=iOS \
+           -DCMAKE_OSX_ARCHITECTURES=arm64 \
+           -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+           -DCMAKE_OSX_SYSROOT=iphoneos \
+           -DCMAKE_INSTALL_PREFIX=$IOS_PREFIX \
+           -DSDL_SHARED=OFF \
+           -DSDL_STATIC=ON
+  make -j$(nproc)
+  make install
+  popd >/dev/null
   cat > "$IOS_PREFIX/lib/pkgconfig/sdl2.pc" <<PC
 prefix=$IOS_PREFIX
 exec_prefix=\${prefix}
