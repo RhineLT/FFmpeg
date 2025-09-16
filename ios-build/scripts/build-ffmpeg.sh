@@ -21,13 +21,21 @@ export LDFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MI
 export PKG_CONFIG_PATH="$IOS_PREFIX/lib/pkgconfig"
 export PKG_CONFIG_LIBDIR="$IOS_PREFIX/lib/pkgconfig"
 
-# Debug pkg-config for libass
+# Debug pkg-config issue
 echo "Debug: PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
 ls -la "$IOS_PREFIX/lib/pkgconfig/" || true
-pkg-config --exists libass && echo "libass found" || echo "libass NOT found"
+echo "Testing libass detection:"
+pkg-config --exists libass && echo "libass FOUND" || echo "libass NOT found"
 pkg-config --modversion libass || true
 echo "Content of libass.pc:"
 cat "$IOS_PREFIX/lib/pkgconfig/libass.pc" || true
+
+# Test our wrapper directly
+echo "Testing wrapper with explicit path:"
+/tmp/pkg-config-wrapper --exists libass && echo "Wrapper: libass FOUND" || echo "Wrapper: libass NOT found"
+echo "Files exist check:"
+ls -la "$IOS_PREFIX/lib/libass.a" 2>/dev/null && echo "libass.a EXISTS" || echo "libass.a MISSING"
+ls -la "$IOS_PREFIX/include/ass/ass.h" 2>/dev/null && echo "ass.h EXISTS" || echo "ass.h MISSING"
 
 BUILD_DIR=build-ios
 rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
