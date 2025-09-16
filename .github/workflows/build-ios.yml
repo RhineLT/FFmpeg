@@ -74,106 +74,108 @@ jobs:
         export CXXFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION} -fembed-bitcode"
         export LDFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION}"
         
-        echo "Building x264 for iOS..."
-        git clone --depth 1 https://code.videolan.org/videolan/x264.git
-        cd x264
-        ./configure \
-          --host=arm-apple-darwin \
-          --prefix="$IOS_PREFIX" \
-          --enable-static \
-          --disable-shared \
-          --disable-opencl \
-          --enable-pic
-        make -j$(sysctl -n hw.ncpu) && make install
-        cd ..
-        
-        echo "Building x265 for iOS..."
-        git clone --depth 1 https://bitbucket.org/multicoreware/x265_git.git x265
-        cd x265/build/linux
-        cmake -G "Unix Makefiles" \
-          -DCMAKE_INSTALL_PREFIX="$IOS_PREFIX" \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DENABLE_SHARED=OFF \
-          -DENABLE_CLI=OFF \
-          -DCMAKE_OSX_ARCHITECTURES=arm64 \
-          -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
-          -DCMAKE_OSX_SYSROOT="$IOS_SDK_PATH" \
-          ../../source
-        make -j$(sysctl -n hw.ncpu) && make install
-        cd ../../..
-        
-        echo "Building libvpx (VP8/VP9) for iOS..."
-        git clone --depth 1 https://chromium.googlesource.com/webm/libvpx.git
-        cd libvpx
-        ./configure \
-          --target=arm64-darwin20-gcc \
-          --prefix="$IOS_PREFIX" \
-          --disable-examples \
-          --disable-docs \
-          --enable-vp8 \
-          --enable-vp9 \
-          --enable-pic \
-          --disable-shared \
-          --enable-static
-        make -j$(sysctl -n hw.ncpu) && make install
-        cd ..
-        
-        echo "Building AV1 codec (libaom) for iOS..."
-        git clone --depth 1 https://aomedia.googlesource.com/aom
-        cd aom
-        mkdir build_ios && cd build_ios
-        cmake .. \
-          -DCMAKE_INSTALL_PREFIX="$IOS_PREFIX" \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DENABLE_SHARED=OFF \
-          -DENABLE_NASM=ON \
-          -DCMAKE_OSX_ARCHITECTURES=arm64 \
-          -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
-          -DCMAKE_OSX_SYSROOT="$IOS_SDK_PATH" \
-          -DENABLE_TESTS=OFF \
-          -DENABLE_EXAMPLES=OFF
-        make -j$(sysctl -n hw.ncpu) && make install
-        cd ../..
-        
-        echo "Building LAME (MP3) for iOS..."
-        curl -L -o lame-3.100.tar.gz http://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz
-        tar -xzf lame-3.100.tar.gz
-        cd lame-3.100
-        ./configure \
-          --host=arm-apple-darwin \
-          --prefix="$IOS_PREFIX" \
-          --enable-static \
-          --disable-shared \
-          --disable-frontend
-        make -j$(sysctl -n hw.ncpu) && make install
-        cd ..
-        
-        echo "Building libass (subtitle rendering) for iOS..."
-        git clone --depth 1 https://github.com/libass/libass.git
-        cd libass
-        ./autogen.sh
-        ./configure \
-          --host=arm-apple-darwin \
-          --prefix="$IOS_PREFIX" \
-          --enable-static \
-          --disable-shared \
-          --disable-require-system-font-provider
-        make -j$(sysctl -n hw.ncpu) && make install
-        cd ..
-        
-        echo "Building Opus audio codec for iOS..."
-        git clone --depth 1 https://github.com/xiph/opus.git
-        cd opus
-        ./autogen.sh
-        ./configure \
-          --host=arm-apple-darwin \
-          --prefix="$IOS_PREFIX" \
-          --enable-static \
-          --disable-shared
-        make -j$(sysctl -n hw.ncpu) && make install
-        cd ..
-        
-        echo "✅ Complete iOS dependencies built successfully"
+  echo "Building x264 for iOS..."
+  git clone --depth 1 https://code.videolan.org/videolan/x264.git
+  cd x264
+  ./configure \
+    --host=arm-apple-darwin \
+    --prefix="$IOS_PREFIX" \
+    --enable-static \
+    --disable-asm \
+    --disable-opencl \
+    --enable-pic
+  make -j$(sysctl -n hw.ncpu) && make install
+  cd ..
+  
+  echo "Building x265 for iOS..."
+  git clone --depth 1 https://bitbucket.org/multicoreware/x265_git.git x265
+  cd x265/build/linux
+  cmake -G "Unix Makefiles" \
+    -DCMAKE_INSTALL_PREFIX="$IOS_PREFIX" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DENABLE_SHARED=OFF \
+    -DENABLE_CLI=OFF \
+    -DENABLE_ASSEMBLY=OFF \
+    -DCMAKE_OSX_ARCHITECTURES=arm64 \
+    -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+    -DCMAKE_OSX_SYSROOT="$IOS_SDK_PATH" \
+    ../../source
+  make -j$(sysctl -n hw.ncpu) && make install
+  cd ../../..
+  
+  echo "Building libvpx (VP8/VP9) for iOS..."
+  git clone --depth 1 https://chromium.googlesource.com/webm/libvpx.git
+  cd libvpx
+  ./configure \
+    --target=arm64-darwin20-gcc \
+    --prefix="$IOS_PREFIX" \
+    --disable-examples \
+    --disable-docs \
+    --enable-vp8 \
+    --enable-vp9 \
+    --enable-pic \
+    --disable-shared \
+    --enable-static
+  make -j$(sysctl -n hw.ncpu) && make install
+  cd ..
+  
+  echo "Building AV1 codec (libaom) for iOS..."
+  git clone --depth 1 https://aomedia.googlesource.com/aom
+  cd aom
+  mkdir build_ios && cd build_ios
+  cmake .. \
+    -DCMAKE_INSTALL_PREFIX="$IOS_PREFIX" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DENABLE_SHARED=OFF \
+    -DENABLE_NASM=OFF \
+    -DCMAKE_OSX_ARCHITECTURES=arm64 \
+    -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+    -DCMAKE_OSX_SYSROOT="$IOS_SDK_PATH" \
+    -DENABLE_TESTS=OFF \
+    -DENABLE_EXAMPLES=OFF \
+    -DAOM_TARGET_CPU=arm64
+  make -j$(sysctl -n hw.ncpu) && make install
+  cd ../..
+  
+  echo "Building LAME (MP3) for iOS..."
+  curl -L -o lame-3.100.tar.gz http://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz
+  tar -xzf lame-3.100.tar.gz
+  cd lame-3.100
+  ./configure \
+    --host=arm-apple-darwin \
+    --prefix="$IOS_PREFIX" \
+    --enable-static \
+    --disable-shared \
+    --disable-frontend
+  make -j$(sysctl -n hw.ncpu) && make install
+  cd ..
+  
+  echo "Building libass (subtitle rendering) for iOS..."
+  git clone --depth 1 https://github.com/libass/libass.git
+  cd libass
+  ./autogen.sh
+  ./configure \
+    --host=arm-apple-darwin \
+    --prefix="$IOS_PREFIX" \
+    --enable-static \
+    --disable-shared \
+    --disable-require-system-font-provider
+  make -j$(sysctl -n hw.ncpu) && make install
+  cd ..
+  
+  echo "Building Opus audio codec for iOS..."
+  git clone --depth 1 https://github.com/xiph/opus.git
+  cd opus
+  ./autogen.sh
+  ./configure \
+    --host=arm-apple-darwin \
+    --prefix="$IOS_PREFIX" \
+    --enable-static \
+    --disable-shared
+  make -j$(sysctl -n hw.ncpu) && make install
+  cd ..
+  
+  echo "✅ Complete iOS dependencies built successfully"
         
     - name: Configure build environment
       run: |
