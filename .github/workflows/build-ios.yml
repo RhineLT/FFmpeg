@@ -86,7 +86,9 @@ jobs:
             --enable-version3 \
             --enable-gpl \
             --enable-nonfree \
+            --enable-ffmpeg \
             --enable-ffplay \
+            --enable-ffprobe \
             --enable-optimizations \
             \
             --enable-libx264 \
@@ -128,12 +130,17 @@ jobs:
         cp -r install/var/jb/usr/* ffmpeg-8.0-ios-arm64-jailbreak/
         
         # Add version info
-        cat > ffmpeg-8.0-ios-arm64-jailbreak/VERSION.txt << EOF
+        cat > ffmpeg-8.0-ios-arm64-jailbreak/VERSION.txt << 'VERSIONEOF'
         FFmpeg 8.0 for iOS ARM64 (Jailbroken)
         Built on: $(date)
         Architecture: arm64
         iOS Min Version: 12.0
         Build Configuration: Production release with essential codecs
+        
+        Included Tools:
+        - ffmpeg: Universal media converter
+        - ffplay: Simple media player  
+        - ffprobe: Media stream analyzer
         
         Supported Codecs:
         - Video: H.264 (x264), H.265/HEVC (x265), VP8/VP9 (libvpx)
@@ -144,49 +151,56 @@ jobs:
         Installation:
         1. Copy contents to /var/jb/usr/
         2. Run: ldid -S /var/jb/usr/bin/ffmpeg
-        3. Test: ffmpeg -version
-        EOF
+        3. Run: ldid -S /var/jb/usr/bin/ffplay  
+        4. Run: ldid -S /var/jb/usr/bin/ffprobe
+        5. Test: ffmpeg -version
+        VERSIONEOF
         
         # Create deb package structure for Cydia/Sileo
         mkdir -p deb/DEBIAN deb/var/jb/usr
         cp -r install/var/jb/usr/* deb/var/jb/usr/
         
         # Create control file for deb package
-        cat > deb/DEBIAN/control << 'EOF'
-Package: ffmpeg
-Version: 8.0-1
-Section: Multimedia
-Priority: optional
-Architecture: iphoneos-arm64
-Depends: 
-Maintainer: FFmpeg iOS Builder <ffmpeg@ios.build>
-Description: FFmpeg 8.0 - Complete multimedia framework
- FFmpeg is a complete, cross-platform solution to record, convert
- and stream audio and video. This version is compiled for iOS ARM64
- with extensive codec support for jailbroken devices.
- .
- Features:
-  - All major video/audio codecs (H.264, H.265, VP8/VP9)
-  - High-quality audio encoding (AAC, MP3, Opus, Vorbis)
-  - Subtitle and text rendering support
-  - Network streaming protocols
-  - Optimized for iOS ARM64 performance
-EOF
+        cat > deb/DEBIAN/control << 'CONTROLEOF'
+        Package: ffmpeg
+        Version: 8.0-1
+        Section: Multimedia
+        Priority: optional
+        Architecture: iphoneos-arm64
+        Depends: 
+        Maintainer: FFmpeg iOS Builder
+        Description: FFmpeg 8.0 - Complete multimedia framework
+         FFmpeg is a complete, cross-platform solution to record, convert
+         and stream audio and video. This version is compiled for iOS ARM64
+         with extensive codec support for jailbroken devices.
+         .
+         Features:
+          - All major video/audio codecs (H.264, H.265, VP8/VP9)
+          - High-quality audio encoding (AAC, MP3, Opus, Vorbis)
+          - Subtitle and text rendering support
+          - Network streaming protocols
+          - Optimized for iOS ARM64 performance
+        CONTROLEOF
 
         # Create postinst script
-        cat > deb/DEBIAN/postinst << 'EOF'
-#!/bin/bash
-echo "FFmpeg 8.0 has been installed to /var/jb/usr/bin/"
-echo "Signing binaries for iOS compatibility..."
-if command -v ldid &> /dev/null; then
-    ldid -S /var/jb/usr/bin/ffmpeg 2>/dev/null || true
-    ldid -S /var/jb/usr/bin/ffplay 2>/dev/null || true
-    echo "✅ FFmpeg binaries signed successfully"
-else
-    echo "⚠️  ldid not found - you may need to sign binaries manually"
-fi
-echo "You can now use: ffmpeg -version"
-EOF
+        cat > deb/DEBIAN/postinst << 'POSTINSTEOF'
+        #!/bin/bash
+        echo "FFmpeg 8.0 has been installed to /var/jb/usr/bin/"
+        echo "Signing binaries for iOS compatibility..."
+        if command -v ldid &> /dev/null; then
+            ldid -S /var/jb/usr/bin/ffmpeg 2>/dev/null || true
+            ldid -S /var/jb/usr/bin/ffplay 2>/dev/null || true
+            ldid -S /var/jb/usr/bin/ffprobe 2>/dev/null || true
+            echo "✅ FFmpeg binaries signed successfully"
+            echo "Available tools: ffmpeg, ffplay, ffprobe"
+        else
+            echo "⚠️  ldid not found - you may need to sign binaries manually"
+            echo "Run: ldid -S /var/jb/usr/bin/ffmpeg"
+            echo "Run: ldid -S /var/jb/usr/bin/ffplay"  
+            echo "Run: ldid -S /var/jb/usr/bin/ffprobe"
+        fi
+        echo "You can now use: ffmpeg -version, ffplay, ffprobe"
+        POSTINSTEOF
 
         chmod +x deb/DEBIAN/postinst
         
@@ -211,9 +225,12 @@ EOF
         # Create tarball
         tar -czf ffmpeg-8.0-ios-arm64-jailbreak.tar.gz ffmpeg-8.0-ios-arm64-jailbreak/
         
-        # List created files
+        # List created files and verify all binaries are present
         echo "Created files:"
         ls -la *.tar.gz *.deb* || true
+        echo ""
+        echo "Verifying binaries in package:"
+        ls -la ffmpeg-8.0-ios-arm64-jailbreak/bin/ || true
         
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
@@ -236,6 +253,7 @@ EOF
           高性能的 FFmpeg 8.0 版本，专为 iOS ARM64 越狱设备编译。
           
           ## ✨ 核心功能
+          - **完整工具集**: ffmpeg (转换), ffplay (播放), ffprobe (分析)
           - **视频编解码器**: H.264 (x264), H.265/HEVC (x265), VP8/VP9 (libvpx)
           - **音频编解码器**: AAC, MP3 (LAME), Opus, Vorbis, Theora
           - **字幕支持**: ASS/SSA (libass)
@@ -257,11 +275,15 @@ EOF
           tar -xzf ffmpeg-8.0-ios-arm64-jailbreak.tar.gz
           cp -r ffmpeg-8.0-ios-arm64-jailbreak/* /var/jb/usr/
           ldid -S /var/jb/usr/bin/ffmpeg
+          ldid -S /var/jb/usr/bin/ffplay
+          ldid -S /var/jb/usr/bin/ffprobe
           ```
           
           ## ✅ 验证安装
           ```bash
           ffmpeg -version
+          ffplay --help
+          ffprobe -version
           ffmpeg -encoders | grep -E "(x264|x265|libvpx)"
           ```
           
