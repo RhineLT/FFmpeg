@@ -26,6 +26,8 @@ echo "Debug: PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
 ls -la "$IOS_PREFIX/lib/pkgconfig/" || true
 pkg-config --exists libass && echo "libass found" || echo "libass NOT found"
 pkg-config --modversion libass || true
+echo "Content of libass.pc:"
+cat "$IOS_PREFIX/lib/pkgconfig/libass.pc" || true
 
 BUILD_DIR=build-ios
 rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
@@ -45,6 +47,7 @@ pushd "$BUILD_DIR" >/dev/null
   --strip="$STRIP" \
   --extra-cflags="$CFLAGS -I$IOS_PREFIX/include" \
   --extra-ldflags="$LDFLAGS -L$IOS_PREFIX/lib" \
+  --extra-libs="-lass -lfribidi -lfreetype" \
   --pkg-config-flags="--static" \
   --enable-static \
   --disable-shared \

@@ -232,7 +232,7 @@ includedir=\${prefix}/include
 Name: libass
 Description: Subtitle rendering library
 Version: 0.17.0
-Requires: freetype2, fribidi
+Requires: freetype2 fribidi
 Libs: -L\${libdir} -lass
 Cflags: -I\${includedir}
 PC
