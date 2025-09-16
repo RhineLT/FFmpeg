@@ -25,45 +25,69 @@ jobs:
         # Update Homebrew first
         brew update
         
-        # Install required build tools and libraries
-        brew install nasm yasm pkgconf
+        # Install required build tools and libraries for HOST compilation
+        brew install autoconf automake libtool pkg-config cmake nasm yasm
         
-        # Install codec libraries (core dependencies - minimal set for iOS)
+        # Install codec libraries that will be used as build dependencies
+        # These are for the host system but will help us build iOS versions
         brew install x264 x265 libvpx opus libvorbis theora lame
-        # Skip libass to avoid cross-compilation issues
-        brew install freetype fontconfig fribidi
+        brew install libass freetype fontconfig fribidi
+        brew install webp libxml2 zimg
         
-        # Install additional libraries (with fallback for missing packages)
-        brew install sox || echo "sox not available, skipping"
-        brew install rubberband || echo "rubberband not available, skipping"  
-        brew install snappy || echo "snappy not available, skipping"
-        # Note: zvbi (teletext) library is not available in Homebrew for macOS
-        brew install zeromq || echo "zeromq not available, skipping"
-        brew install webp || echo "webp not available, skipping"
-        brew install libxml2 || echo "libxml2 not available, skipping"
-        
-        # Video processing libraries (may not be available on all systems)
-        brew install vidstab || echo "vidstab not available, skipping"
-        brew install zimg || echo "zimg not available, skipping"
+        # Additional build tools
+        brew install wget curl git
         
     - name: Setup iOS SDK paths
       run: |
         echo "XCODE_PATH=$(xcode-select -p)" >> $GITHUB_ENV
         echo "IOS_SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)" >> $GITHUB_ENV
         echo "IOS_MIN_VERSION=12.0" >> $GITHUB_ENV
+        echo "IOS_PREFIX=$PWD/ios-build" >> $GITHUB_ENV
+        
+    - name: Build iOS dependencies
+      run: |
+        mkdir -p ios-build
+        export IOS_PREFIX=$PWD/ios-build
+        export IOS_SDK_PATH="${IOS_SDK_PATH}"
+        export IOS_MIN_VERSION="12.0"
+        
+        echo "Setting up iOS cross-compilation environment..."
+        
+        # iOS cross-compilation environment
+        export CC="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang"
+        export CXX="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++"
+        export AR="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/ar"
+        export RANLIB="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/ranlib"
+        export STRIP="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/strip"
+        
+        # iOS compilation flags
+        export CFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION} -fembed-bitcode"
+        export CXXFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION} -fembed-bitcode"
+        export LDFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION}"
+        
+        echo "Building x264 for iOS..."
+        git clone --depth 1 https://code.videolan.org/videolan/x264.git
+        cd x264
+        ./configure \
+          --host=arm-apple-darwin \
+          --prefix="$IOS_PREFIX" \
+          --enable-static \
+          --disable-shared \
+          --disable-opencl \
+          --enable-pic
+        make -j$(sysctl -n hw.ncpu) && make install
+        cd ..
+        
+        echo "✅ iOS dependencies built successfully"
         
     - name: Configure build environment
       run: |
         mkdir -p build-ios
         cd build-ios
         
-        # Set up pkg-config paths for Homebrew libraries
-        export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:$PKG_CONFIG_PATH"
-        export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+        export IOS_PREFIX=$PWD/../ios-build
         
-        # Set up cross-compilation variables
-        export CROSS_TOP="${XCODE_PATH}/Platforms/iPhoneOS.platform/Developer"
-        export CROSS_SDK="iPhoneOS.sdk"
+        # Set up iOS cross-compilation environment
         export CC="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang"
         export CXX="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++"
         export AR="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/ar"
@@ -71,33 +95,38 @@ jobs:
         export RANLIB="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/ranlib"
         export STRIP="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/strip"
         
-        # Set cross-compilation flags that work with Homebrew libraries
-        export CPPFLAGS="-I/opt/homebrew/include -I/usr/local/include"
-        export LDFLAGS="-L/opt/homebrew/lib -L/usr/local/lib"
+        # iOS-specific compilation flags
+        export CFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION} -O3"
+        export CXXFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION} -O3"
+        export LDFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION}"
         
-        # Verify key library installations
-        echo "Checking key library installations:"
-        pkg-config --exists x264 && echo "✅ x264 found" || echo "❌ x264 not found"
-        pkg-config --exists x265 && echo "✅ x265 found" || echo "❌ x265 not found"
+        # Set up pkg-config for our iOS libraries
+        export PKG_CONFIG_PATH="$IOS_PREFIX/lib/pkgconfig:/opt/homebrew/lib/pkgconfig"
+        export PKG_CONFIG_LIBDIR="$IOS_PREFIX/lib/pkgconfig"
         
-        # Configure FFmpeg with iOS-specific settings
-        PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:$PKG_CONFIG_PATH" \
-        CPPFLAGS="-I/opt/homebrew/include -I/usr/local/include" \
-        LDFLAGS="-L/opt/homebrew/lib -L/usr/local/lib" \
+        # Verify our iOS libraries
+        echo "Checking iOS library installations:"
+        ls -la "$IOS_PREFIX/lib/" || true
+        ls -la "$IOS_PREFIX/include/" || true
+        
+        # Configure FFmpeg for iOS
         ../configure \
             --prefix=/var/jb/usr \
             --enable-cross-compile \
             --target-os=darwin \
             --arch=arm64 \
+            --sysroot="$IOS_SDK_PATH" \
             --cc="$CC" \
             --cxx="$CXX" \
             --nm="$NM" \
             --ar="$AR" \
             --ranlib="$RANLIB" \
             --strip="$STRIP" \
-            --extra-cflags="-arch arm64 -mios-version-min=$IOS_MIN_VERSION -O3 -I/opt/homebrew/include -I/usr/local/include" \
-            --extra-ldflags="-arch arm64 -mios-version-min=$IOS_MIN_VERSION -L/opt/homebrew/lib -L/usr/local/lib" \
-            --enable-shared \
+            --extra-cflags="$CFLAGS -I$IOS_PREFIX/include" \
+            --extra-ldflags="$LDFLAGS -L$IOS_PREFIX/lib" \
+            --pkg-config-flags="--static" \
+            --enable-static \
+            --disable-shared \
             --enable-pthreads \
             --enable-version3 \
             --enable-gpl \
@@ -108,27 +137,26 @@ jobs:
             --enable-optimizations \
             \
             --enable-libx264 \
-            --enable-libx265 \
-            --enable-libvpx \
-            --enable-libopus \
-            --enable-libvorbis \
-            --enable-libtheora \
-            --enable-libmp3lame \
-            --enable-libfreetype \
-            --enable-libfontconfig \
-            --enable-libfribidi \
-            --enable-libwebp \
-            --enable-libxml2 \
+            --enable-encoder=libx264 \
+            --enable-encoder=aac \
+            --enable-encoder=pcm_s16le \
+            --enable-decoder=aac \
+            --enable-decoder=h264 \
+            --enable-muxer=mp4 \
+            --enable-muxer=mov \
+            --enable-demuxer=mov \
+            --enable-parser=h264 \
+            --enable-protocol=file \
             \
-            --disable-libbluray \
-            --disable-libjack \
-            --disable-indev=jack \
-            --disable-xlib \
             --disable-audiotoolbox \
-            --disable-libzvbi \
+            --disable-videotoolbox \
+            --disable-securetransport \
+            --disable-iconv \
+            --disable-lzma \
+            --disable-bzlib \
+            --disable-libxml2 \
             --disable-debug \
             --disable-doc \
-            --disable-static \
             --enable-small
             
     - name: Build FFmpeg
@@ -159,10 +187,15 @@ jobs:
         - ffprobe: Media stream analyzer
         
         Supported Codecs:
-        - Video: H.264 (x264), H.265/HEVC (x265), VP8/VP9 (libvpx)
-        - Audio: AAC, MP3 (LAME), Opus, Vorbis, Theora
-        - Text/Fonts: FreeType, FontConfig, Fribidi
-        - Images: WebP
+        - Video: H.264 (x264) encoding and decoding
+        - Audio: AAC encoding/decoding, PCM
+        - Containers: MP4, MOV
+        - Protocols: File I/O
+        
+        Core Features:
+        - Static linking for iOS compatibility
+        - Minimal size optimization
+        - ARM64 native performance
         
         Installation:
         1. Copy contents to /var/jb/usr/
@@ -191,9 +224,9 @@ jobs:
          with extensive codec support for jailbroken devices.
          .
          Features:
-          - All major video/audio codecs (H.264, H.265, VP8/VP9)
-          - High-quality audio encoding (AAC, MP3, Opus, Vorbis)
-          - Text rendering and font support (FreeType, FontConfig)
+          - All major video/audio codecs (H.264 + AAC optimized)
+          - High-quality H.264 encoding with x264
+          - Compact static binary for iOS compatibility
           - Network streaming protocols
           - Optimized for iOS ARM64 performance
         CONTROLEOF
@@ -270,9 +303,9 @@ jobs:
           
           ## ✨ 核心功能
           - **完整工具集**: ffmpeg (转换), ffplay (播放), ffprobe (分析)
-          - **视频编解码器**: H.264 (x264), H.265/HEVC (x265), VP8/VP9 (libvpx)
-          - **音频编解码器**: AAC, MP3 (LAME), Opus, Vorbis, Theora
-          - **文本渲染**: FreeType, FontConfig, Fribidi 支持
+          - **视频编解码器**: H.264 (x264) 高质量编码
+          - **音频编解码器**: AAC, PCM 无损音频
+          - **容器格式**: MP4, MOV 支持
           - **图像格式**: WebP 支持
           - **网络协议**: HTTP/HTTPS 流媒体支持
           - **性能优化**: 针对 ARM64 架构优化
@@ -300,7 +333,7 @@ jobs:
           ffmpeg -version
           ffplay --help
           ffprobe -version
-          ffmpeg -encoders | grep -E "(x264|x265|libvpx)"
+          ffmpeg -encoders | grep -E "(x264|aac)"
           ```
           
           ## 🆚 相比 v5.1.2 的改进
