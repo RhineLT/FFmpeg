@@ -223,6 +223,21 @@ jobs:
         make -j$(sysctl -n hw.ncpu) && make install
         cd ..
         
+        # Create libass pkg-config file manually
+        cat > "$IOS_PREFIX/lib/pkgconfig/libass.pc" << EOF
+        prefix=$IOS_PREFIX
+        exec_prefix=\${prefix}
+        libdir=\${exec_prefix}/lib
+        includedir=\${prefix}/include
+        
+        Name: libass
+        Description: Subtitle rendering library
+        Version: 0.17.0
+        Requires: freetype2, fribidi
+        Libs: -L\${libdir} -lass
+        Cflags: -I\${includedir}
+        EOF
+        
         echo "Building Opus audio codec for iOS..."
         git clone --depth 1 https://github.com/xiph/opus.git
         cd opus
@@ -235,7 +250,33 @@ jobs:
         make -j$(sysctl -n hw.ncpu) && make install
         cd ..
         
+        # Create opus pkg-config file manually if not created
+        if [ ! -f "$IOS_PREFIX/lib/pkgconfig/opus.pc" ]; then
+          cat > "$IOS_PREFIX/lib/pkgconfig/opus.pc" << EOF
+        prefix=$IOS_PREFIX
+        exec_prefix=\${prefix}
+        libdir=\${exec_prefix}/lib
+        includedir=\${prefix}/include
+        
+        Name: Opus
+        Description: Opus IETF audio codec
+        Version: 1.4.0
+        Requires:
+        Libs: -L\${libdir} -lopus
+        Cflags: -I\${includedir}/opus
+        EOF
+        fi
+        
         echo "✅ Complete iOS dependencies built successfully"
+        
+        # Debug: List all pkg-config files
+        echo "Debug: Checking pkg-config files:"
+        ls -la "$IOS_PREFIX/lib/pkgconfig/" || true
+        echo "Debug: Testing pkg-config queries:"
+        PKG_CONFIG_PATH="$IOS_PREFIX/lib/pkgconfig" pkg-config --exists libass && echo "libass: ✅" || echo "libass: ❌"
+        PKG_CONFIG_PATH="$IOS_PREFIX/lib/pkgconfig" pkg-config --exists opus && echo "opus: ✅" || echo "opus: ❌" 
+        PKG_CONFIG_PATH="$IOS_PREFIX/lib/pkgconfig" pkg-config --exists vpx && echo "vpx: ✅" || echo "vpx: ❌"
+        PKG_CONFIG_PATH="$IOS_PREFIX/lib/pkgconfig" pkg-config --exists x264 && echo "x264: ✅" || echo "x264: ❌"
         
     - name: Configure build environment
       run: |
