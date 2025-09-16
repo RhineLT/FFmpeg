@@ -1,4 +1,4 @@
-name: Build FFmpeg 8.0 for iOS ARM64 (Jailbroken)
+name: Build FFmpeg 8.0 for iOS 16.x ARM64 (Jailbroken)
 
 on:
   push:
@@ -9,70 +9,16 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14  # Use latest macOS runner with better compatibility
-          # Create libass pkg-config file with all dependencies
-        cat > "$IOS_PREFIX/lib/pkgconfig/libass.pc" << EOF
-        prefix=$IOS_PREFIX
-        exec_prefix=\${prefix}
-        libdir=\${exec_prefix}/lib
-        includedir=\${prefix}/include
-        
-        Name: libass
-        Description: Subtitle rendering library
-        Version: 0.17.1
-        Requires: freetype2 fribidi
-        Libs: -L\${libdir} -lass -lfribidi -lfreetype -lbz2 -lpng -lz -lm
-        Libs.private: -lfribidi -lfreetype -lbz2 -lpng -lz -lm
-        Cflags: -I\${includedir}
-        EOF
-        
-        # Create additional missing pkg-config files
-        cat > "$IOS_PREFIX/lib/pkgconfig/bzip2.pc" << EOF
-        prefix=$IOS_PREFIX
-        exec_prefix=\${prefix}
-        libdir=\${exec_prefix}/lib
-        includedir=\${prefix}/include
-        
-        Name: bzip2
-        Description: A high-quality data compressor
-        Version: 1.0.8
-        Libs: -L\${libdir} -lbz2
-        Cflags: -I\${includedir}
-        EOF
-        
-        cat > "$IOS_PREFIX/lib/pkgconfig/libpng.pc" << EOF
-        prefix=$IOS_PREFIX
-        exec_prefix=\${prefix}
-        libdir=\${exec_prefix}/lib
-        includedir=\${prefix}/include
-        
-        Name: libpng
-        Description: PNG image format library
-        Version: 1.6.40
-        Requires: zlib
-        Libs: -L\${libdir} -lpng16
-        Libs.private: -lz -lm
-        Cflags: -I\${includedir}/libpng16
-        EOF
-        
-        cat > "$IOS_PREFIX/lib/pkgconfig/zlib.pc" << EOF
-        prefix=$IOS_PREFIX
-        exec_prefix=\${prefix}
-        libdir=\${exec_prefix}/lib
-        includedir=\${prefix}/include
-        
-        Name: zlib
-        Description: zlib compression library
-        Version: 1.2.13
-        Libs: -L\${libdir} -lz
-        Cflags: -I\${includedir}
-        EOF    - name: Checkout FFmpeg source
+    runs-on: macos-13  # Xcode 14.3.1 with iOS 16.x SDK (suitable for iOS 16.5)
+    
+    steps:
+    - name: Checkout FFmpeg source
       uses: actions/checkout@v4
       
     - name: Setup Xcode
       uses: maxim-lobanov/setup-xcode@v1
       with:
-        xcode-version: '15.2'  # Latest stable version compatible with iOS 16.5
+        xcode-version: '14.3.1'  # iOS 16.x SDK; matches iOS 16.5 device target
         
     - name: Install dependencies via Homebrew
       run: |
@@ -84,6 +30,8 @@ jobs:
         
         # Install required build tools and libraries for HOST compilation
         brew install autoconf automake libtool pkg-config cmake nasm yasm
+        # dpkg for building .deb package on macOS runner
+        brew install dpkg || true
         
         # Install codec libraries that will be used as build dependencies
         # These are for the host system but will help us build iOS versions
@@ -116,7 +64,7 @@ jobs:
         
         echo "Setting up iOS cross-compilation environment..."
         
-        # iOS cross-compilation environment
+  # iOS cross-compilation environment
         export CC="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang"
         export CXX="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++"
         export AR="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/ar"
@@ -128,6 +76,44 @@ jobs:
         export CXXFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION} -fembed-bitcode"
         export LDFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION}"
         
+        echo "Building SDL2 (for ffplay) for iOS..."
+        git clone --depth 1 https://github.com/libsdl-org/SDL.git
+        cd SDL
+        # Build static SDL2 library for iOS (UIKit backend)
+        xcodebuild -project Xcode-iOS/SDL/SDL.xcodeproj \
+          -scheme SDL \
+          -configuration Release \
+          -sdk iphoneos \
+          -arch arm64 \
+          IPHONEOS_DEPLOYMENT_TARGET=${IOS_MIN_VERSION} \
+          build | xcpretty || true
+        mkdir -p "$IOS_PREFIX/lib" "$IOS_PREFIX/include/SDL2" "$IOS_PREFIX/lib/pkgconfig"
+        # Copy the built static lib and headers
+        if [ -f "build/Release-iphoneos/libSDL2.a" ]; then
+          cp -f build/Release-iphoneos/libSDL2.a "$IOS_PREFIX/lib/"
+        else
+          # fallback pattern if Xcode build path differs
+          cp -f build/*-iphoneos/libSDL2.a "$IOS_PREFIX/lib/"
+        fi
+        cp -R include/* "$IOS_PREFIX/include/SDL2/"
+        cd ..
+
+        # Create SDL2 pkg-config file for ffplay
+        cat > "$IOS_PREFIX/lib/pkgconfig/sdl2.pc" << EOF
+        prefix=$IOS_PREFIX
+        exec_prefix=\${prefix}
+        libdir=\${exec_prefix}/lib
+        includedir=\${prefix}/include
+
+        Name: sdl2
+        Description: Simple DirectMedia Layer 2 (iOS)
+        Version: 2.30.0
+        Requires:
+        Libs: -L\${libdir} -lSDL2
+        Libs.private: -Wl,-framework,UIKit -Wl,-framework,CoreFoundation -Wl,-framework,CoreGraphics -Wl,-framework,Foundation -Wl,-framework,QuartzCore -Wl,-framework,AVFoundation -Wl,-framework,AudioToolbox -Wl,-framework,CoreAudio -Wl,-framework,GameController -Wl,-framework,CoreMotion -Wl,-framework,CoreHaptics -Wl,-framework,Metal -Wl,-framework,MetalKit -Wl,-framework,OpenGLES
+        Cflags: -I\${includedir}/SDL2
+        EOF
+
         echo "Building x264 for iOS..."
         git clone --depth 1 https://code.videolan.org/videolan/x264.git
         cd x264
@@ -277,36 +263,6 @@ jobs:
         make -j$(sysctl -n hw.ncpu) && make install
         cd ..
         
-        # Create freetype2 pkg-config file manually
-        cat > "$IOS_PREFIX/lib/pkgconfig/freetype2.pc" << EOF
-        prefix=$IOS_PREFIX
-        exec_prefix=\${prefix}
-        libdir=\${exec_prefix}/lib
-        includedir=\${prefix}/include
-        
-        Name: FreeType 2
-        Description: A free, high-quality, and portable font engine
-        Version: 2.13.2
-        Requires:
-        Libs: -L\${libdir} -lfreetype
-        Cflags: -I\${includedir}/freetype2
-        EOF
-        
-        # Create fribidi pkg-config file manually
-        cat > "$IOS_PREFIX/lib/pkgconfig/fribidi.pc" << EOF
-        prefix=$IOS_PREFIX
-        exec_prefix=\${prefix}
-        libdir=\${exec_prefix}/lib
-        includedir=\${prefix}/include
-        
-        Name: GNU FriBidi
-        Description: Unicode BiDi library
-        Version: 1.0.13
-        Requires:
-        Libs: -L\${libdir} -lfribidi
-        Cflags: -I\${includedir}/fribidi
-        EOF
-        
         # Create libass pkg-config file manually
         cat > "$IOS_PREFIX/lib/pkgconfig/libass.pc" << EOF
         prefix=$IOS_PREFIX
@@ -316,141 +272,13 @@ jobs:
         
         Name: libass
         Description: Subtitle rendering library
-        Version: 0.17.1
-        Requires: freetype2 >= 9.10.3, fribidi >= 0.19.0
+        Version: 0.17.0
+        Requires: freetype2, fribidi
         Libs: -L\${libdir} -lass
         Cflags: -I\${includedir}
         EOF
         
-        echo "Building Vorbis audio codec for iOS..."
-        curl -L -o libvorbis-1.3.7.tar.xz https://downloads.xiph.org/releases/vorbis/libvorbis-1.3.7.tar.xz
-        tar -xf libvorbis-1.3.7.tar.xz
-        cd libvorbis-1.3.7
-        
-        # First build libogg (required for vorbis)
-        cd ..
-        curl -L -o libogg-1.3.5.tar.xz https://downloads.xiph.org/releases/ogg/libogg-1.3.5.tar.xz  
-        tar -xf libogg-1.3.5.tar.xz
-        cd libogg-1.3.5
-        ./configure \
-          --host=arm-apple-darwin \
-          --prefix="$IOS_PREFIX" \
-          --enable-static \
-          --disable-shared
-        make -j$(sysctl -n hw.ncpu) && make install
-        cd ..
-        
-        # Create ogg pkg-config file
-        cat > "$IOS_PREFIX/lib/pkgconfig/ogg.pc" << EOF
-        prefix=$IOS_PREFIX
-        exec_prefix=\${prefix}
-        libdir=\${exec_prefix}/lib
-        includedir=\${prefix}/include
-        
-        Name: ogg
-        Description: ogg is a library for manipulating ogg bitstreams
-        Version: 1.3.5
-        Requires:
-        Libs: -L\${libdir} -logg
-        Cflags: -I\${includedir}
-        EOF
-        
-        # Now build vorbis
-        cd libvorbis-1.3.7
-        ./configure \
-          --host=arm-apple-darwin \
-          --prefix="$IOS_PREFIX" \
-          --enable-static \
-          --disable-shared \
-          PKG_CONFIG_PATH="$IOS_PREFIX/lib/pkgconfig"
-        make -j$(sysctl -n hw.ncpu) && make install
-        cd ..
-        
-        # Create vorbis pkg-config files
-        cat > "$IOS_PREFIX/lib/pkgconfig/vorbis.pc" << EOF
-        prefix=$IOS_PREFIX
-        exec_prefix=\${prefix}
-        libdir=\${exec_prefix}/lib
-        includedir=\${prefix}/include
-        
-        Name: vorbis
-        Description: vorbis is the primary Ogg Vorbis library
-        Version: 1.3.7
-        Requires: ogg >= 1.0
-        Libs: -L\${libdir} -lvorbis -lm
-        Cflags: -I\${includedir}
-        EOF
-        
-        cat > "$IOS_PREFIX/lib/pkgconfig/vorbisenc.pc" << EOF
-        prefix=$IOS_PREFIX
-        exec_prefix=\${prefix}
-        libdir=\${exec_prefix}/lib
-        includedir=\${prefix}/include
-        
-        Name: vorbisenc
-        Description: vorbisenc is a library that provides a convenient API for setting up an encoding environment using libvorbis
-        Version: 1.3.7
-        Requires: vorbis >= 1.3.7
-        Libs: -L\${libdir} -lvorbisenc
-        Cflags: -I\${includedir}
-        EOF
-        
-        echo "Building Theora video codec for iOS..."
-        curl -L -o libtheora-1.1.1.tar.xz https://downloads.xiph.org/releases/theora/libtheora-1.1.1.tar.xz
-        tar -xf libtheora-1.1.1.tar.xz
-        cd libtheora-1.1.1
-        ./configure \
-          --host=arm-apple-darwin \
-          --prefix="$IOS_PREFIX" \
-          --enable-static \
-          --disable-shared \
-          --disable-examples \
-          PKG_CONFIG_PATH="$IOS_PREFIX/lib/pkgconfig"
-        make -j$(sysctl -n hw.ncpu) && make install
-        cd ..
-        
-        # Create theora pkg-config files
-        cat > "$IOS_PREFIX/lib/pkgconfig/theora.pc" << EOF
-        prefix=$IOS_PREFIX
-        exec_prefix=\${prefix}
-        libdir=\${exec_prefix}/lib
-        includedir=\${prefix}/include
-        
-        Name: theora
-        Description: Theora video codec
-        Version: 1.1.1
-        Requires: ogg >= 1.1
-        Libs: -L\${libdir} -ltheora
-        Cflags: -I\${includedir}
-        EOF
-        
-        cat > "$IOS_PREFIX/lib/pkgconfig/theoraenc.pc" << EOF
-        prefix=$IOS_PREFIX
-        exec_prefix=\${prefix}
-        libdir=\${exec_prefix}/lib
-        includedir=\${prefix}/include
-        
-        Name: theoraenc
-        Description: Theora video codec (encoder)
-        Version: 1.1.1
-        Requires: theora >= 1.1
-        Libs: -L\${libdir} -ltheoraenc
-        Cflags: -I\${includedir}
-        EOF
-        
-        cat > "$IOS_PREFIX/lib/pkgconfig/theoradec.pc" << EOF
-        prefix=$IOS_PREFIX
-        exec_prefix=\${prefix}
-        libdir=\${exec_prefix}/lib
-        includedir=\${prefix}/include
-        
-        Name: theoradec
-        Description: Theora video codec (decoder)
-        Version: 1.1.1
-        Requires: theora >= 1.1
-        Libs: -L\${libdir} -ltheoradec
-        Cflags: -I\${includedir}
-        EOF
+        echo "Building Opus audio codec for iOS..."
         git clone --depth 1 https://github.com/xiph/opus.git
         cd opus
         ./autogen.sh
@@ -479,7 +307,7 @@ jobs:
         EOF
         fi
         
-        echo "✅ Complete iOS dependencies built successfully"
+  echo "✅ Complete iOS dependencies built successfully"
         
         # Debug: List all pkg-config files
         echo "Debug: Checking pkg-config files:"
@@ -506,20 +334,20 @@ jobs:
         export STRIP="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/strip"
         
         # iOS-specific compilation flags
-        export CFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION} -O3"
-        export CXXFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION} -O3"
+  export CFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION} -O3"
+  export CXXFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION} -O3"
         export LDFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION}"
         
         # Set up pkg-config for our iOS libraries
-        export PKG_CONFIG_PATH="$IOS_PREFIX/lib/pkgconfig:/opt/homebrew/lib/pkgconfig"
-        export PKG_CONFIG_LIBDIR="$IOS_PREFIX/lib/pkgconfig"
+  export PKG_CONFIG_PATH="$IOS_PREFIX/lib/pkgconfig:/opt/homebrew/lib/pkgconfig"
+  export PKG_CONFIG_LIBDIR="$IOS_PREFIX/lib/pkgconfig"
         
         # Verify our iOS libraries
         echo "Checking iOS library installations:"
         ls -la "$IOS_PREFIX/lib/" || true
         ls -la "$IOS_PREFIX/include/" || true
         
-        # Configure FFmpeg for iOS with comprehensive codec support
+        # Configure FFmpeg for iOS
         ../configure \
           --prefix=/var/jb/usr \
           --enable-cross-compile \
@@ -544,6 +372,7 @@ jobs:
           --enable-ffmpeg \
           --enable-ffplay \
           --enable-ffprobe \
+          --enable-sdl2 \
           --enable-optimizations \
           \
           --enable-libx264 \
@@ -553,9 +382,6 @@ jobs:
           --enable-libopus \
           --enable-libmp3lame \
           --enable-libass \
-          --enable-libfreetype \
-          --enable-libvorbis \
-          --enable-libtheora \
           \
           --enable-encoder=libx264 \
           --enable-encoder=libx265 \
@@ -564,8 +390,6 @@ jobs:
           --enable-encoder=libaom_av1 \
           --enable-encoder=libopus \
           --enable-encoder=libmp3lame \
-          --enable-encoder=libvorbis \
-          --enable-encoder=libtheora \
           --enable-encoder=aac \
           --enable-encoder=pcm_s16le \
           \
@@ -577,18 +401,14 @@ jobs:
           --enable-decoder=opus \
           --enable-decoder=mp3 \
           --enable-decoder=aac \
-          --enable-decoder=vorbis \
-          --enable-decoder=theora \
           \
           --enable-muxer=mp4 \
           --enable-muxer=mov \
           --enable-muxer=matroska \
           --enable-muxer=webm \
-          --enable-muxer=ogg \
           --enable-demuxer=mov \
           --enable-demuxer=matroska \
           --enable-demuxer=webm \
-          --enable-demuxer=ogg \
           --enable-parser=h264 \
           --enable-parser=hevc \
           --enable-parser=vp8 \
@@ -600,7 +420,7 @@ jobs:
           \
           --disable-audiotoolbox \
           --disable-videotoolbox \
-          --disable-securetransport \
+          --enable-securetransport \
           --disable-iconv \
           --disable-lzma \
           --disable-bzlib \
@@ -673,11 +493,10 @@ jobs:
         Complete FFmpeg 8.0 build optimized for jailbroken iOS devices (iOS 12.0+).
         
         ## 📋 Features
-        - **Video Codecs**: H.264 (x264), H.265/HEVC (x265), VP8, VP9, AV1 (libaom), Theora
-        - **Audio Codecs**: AAC, MP3 (LAME), Opus, Vorbis, PCM
-        - **Containers**: MP4, MOV, Matroska, WebM, Ogg
-        - **Subtitle Support**: libass with FreeType2 for ASS/SSA rendering
-        - **Text Rendering**: FreeType2 with Fribidi (bidirectional text support)
+        - **Video Codecs**: H.264, H.265/HEVC, VP8, VP9, AV1
+        - **Audio Codecs**: AAC, MP3, Opus, PCM
+        - **Containers**: MP4, MOV, Matroska, WebM
+        - **Subtitle Support**: libass for ASS/SSA rendering
         - **Network Streaming**: HTTP/HTTPS protocols
         
         ## 💾 Installation
@@ -839,8 +658,8 @@ jobs:
       uses: softprops/action-gh-release@v1
       if: github.ref == 'refs/heads/main'
       with:
-        tag_name: v8.0-ios-${{ github.run_number }}
-        name: FFmpeg 8.0 for iOS ARM64 - Build ${{ github.run_number }}
+        tag_name: v8.0-ios16x-${{ github.run_number }}
+        name: FFmpeg 8.0 for iOS 16.x ARM64 - Build ${{ github.run_number }}
         body: |
           # 🎬 FFmpeg 8.0 for iOS ARM64 (Jailbroken) 
           
@@ -848,7 +667,7 @@ jobs:
           
           ## ✨ Features
           - **Complete codec support**: H.264, H.265, VP8, VP9, AV1, MP3, AAC, Opus
-          - **iOS optimized**: Built with Xcode 15.2 for maximum compatibility
+          - **iOS optimized**: Built with Xcode 14.3.1 for maximum compatibility
           - **Subtitle support**: libass for perfect subtitle rendering
           - **Network streaming**: HTTP/HTTPS protocol support
           
@@ -891,8 +710,8 @@ jobs:
           ## 📊 Build Info
           - **Built**: ${{ github.event.head_commit.timestamp }}
           - **Commit**: ${{ github.sha }}
-          - **Xcode**: 15.2
-          - **iOS SDK**: 17.2 (targeting iOS 12.0+)
+          - **Xcode**: 14.3.1
+          - **iOS SDK**: 16.x (targeting iOS 12.0+, validated on iOS 16.5/arm64)
         files: |
           ffmpeg-8.0-ios-arm64.tar.gz
           ffmpeg-8.0-ios-arm64.deb
