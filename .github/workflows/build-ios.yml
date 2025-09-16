@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-13  # Use macOS runner with Xcode support
+    runs-on: macos-14  # Use latest macOS runner with better compatibility
     
     steps:
     - name: Checkout FFmpeg source
@@ -18,7 +18,7 @@ jobs:
     - name: Setup Xcode
       uses: maxim-lobanov/setup-xcode@v1
       with:
-        xcode-version: '15.0'
+        xcode-version: '15.2'  # Latest stable version compatible with iOS 16.5
         
     - name: Install dependencies via Homebrew
       run: |
@@ -36,7 +36,7 @@ jobs:
         brew install sox || echo "sox not available, skipping"
         brew install rubberband || echo "rubberband not available, skipping"  
         brew install snappy || echo "snappy not available, skipping"
-        brew install zvbi || echo "zvbi not available, skipping"
+        # Note: zvbi (teletext) library is not available in Homebrew for macOS
         brew install zeromq || echo "zeromq not available, skipping"
         brew install webp || echo "webp not available, skipping"
         brew install libxml2 || echo "libxml2 not available, skipping"
@@ -56,6 +56,10 @@ jobs:
         mkdir -p build-ios
         cd build-ios
         
+        # Set up pkg-config paths for Homebrew libraries
+        export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:$PKG_CONFIG_PATH"
+        export PATH="/usr/local/bin:$PATH"
+        
         # Set up cross-compilation variables
         export CROSS_TOP="${XCODE_PATH}/Platforms/iPhoneOS.platform/Developer"
         export CROSS_SDK="iPhoneOS.sdk"
@@ -66,7 +70,14 @@ jobs:
         export RANLIB="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/ranlib"
         export STRIP="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/strip"
         
+        # Verify libass installation
+        echo "Checking libass installation:"
+        pkg-config --exists libass && echo "✅ libass found" || echo "❌ libass not found"
+        pkg-config --modversion libass || true
+        pkg-config --cflags libass || true
+        
         # Configure FFmpeg with iOS-specific settings
+        PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:$PKG_CONFIG_PATH" \
         ../configure \
             --prefix=/var/jb/usr \
             --enable-cross-compile \
@@ -110,6 +121,7 @@ jobs:
             --disable-indev=jack \
             --disable-xlib \
             --disable-audiotoolbox \
+            --disable-libzvbi \
             --disable-debug \
             --disable-doc \
             --disable-static \
