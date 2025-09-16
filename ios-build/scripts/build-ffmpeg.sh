@@ -33,25 +33,26 @@ BUILD_DIR=build-ios
 rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
 
 # Create temporary pkg-config wrapper to help with libass detection
-cat > /tmp/pkg-config-wrapper <<'EOF'
+cat > /tmp/pkg-config-wrapper <<EOF
 #!/bin/bash
-if [[ "$1" == "--exists" && "$2" == "libass" ]]; then
-    if [[ -f "$IOS_PREFIX/lib/libass.a" && -f "$IOS_PREFIX/include/ass/ass.h" ]]; then
+IOS_PREFIX="$IOS_PREFIX"
+if [[ "\$1" == "--exists" && "\$2" == "libass" ]]; then
+    if [[ -f "\$IOS_PREFIX/lib/libass.a" && -f "\$IOS_PREFIX/include/ass/ass.h" ]]; then
         exit 0
     else
         exit 1
     fi
-elif [[ "$1" == "--modversion" && "$2" == "libass" ]]; then
+elif [[ "\$1" == "--modversion" && "\$2" == "libass" ]]; then
     echo "0.17.0"
     exit 0
-elif [[ "$1" == "--cflags" && "$2" == "libass" ]]; then
-    echo "-I$IOS_PREFIX/include"
+elif [[ "\$1" == "--cflags" && "\$2" == "libass" ]]; then
+    echo "-I\$IOS_PREFIX/include"
     exit 0
-elif [[ "$1" == "--libs" && "$2" == "libass" ]]; then
-    echo "-L$IOS_PREFIX/lib -lass -lfribidi -lfreetype"
+elif [[ "\$1" == "--libs" && "\$2" == "libass" ]]; then
+    echo "-L\$IOS_PREFIX/lib -lass -lfribidi -lfreetype"
     exit 0
 else
-    exec pkg-config "$@"
+    exec pkg-config "\$@"
 fi
 EOF
 chmod +x /tmp/pkg-config-wrapper
@@ -92,7 +93,6 @@ pushd "$BUILD_DIR" >/dev/null
   --enable-libvpx \
   --enable-libaom \
   --enable-libopus \
-  --enable-libmp3lame \
   --enable-libass \
   --enable-encoder=libx264 \
   --enable-encoder=libx265 \
@@ -100,7 +100,6 @@ pushd "$BUILD_DIR" >/dev/null
   --enable-encoder=libvpx_vp9 \
   --enable-encoder=libaom_av1 \
   --enable-encoder=libopus \
-  --enable-encoder=libmp3lame \
   --enable-encoder=aac \
   --enable-encoder=pcm_s16le \
   --enable-decoder=h264 \

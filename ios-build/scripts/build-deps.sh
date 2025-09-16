@@ -154,7 +154,8 @@ if [ ! -f "$IOS_PREFIX/lib/libaom.a" ]; then
 fi
 
 echo "[deps] Build lame (MP3)"
-if [ ! -f "$IOS_PREFIX/lib/libmp3lame.a" ]; then
+# Skip lame for now due to compilation issues
+# if [ ! -f "$IOS_PREFIX/lib/libmp3lame.a" ]; then
   fetch http://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz lame-3.100.tar.gz
   rm -rf lame-3.100 && tar -xzf lame-3.100.tar.gz
   pushd lame-3.100 >/dev/null
@@ -180,7 +181,7 @@ Requires:
 Libs: -L\${libdir} -lmp3lame
 Cflags: -I\${includedir}
 PC
-fi
+# fi
 
 echo "[deps] Build freetype + fribidi + libass"
 if [ ! -f "$IOS_PREFIX/lib/libass.a" ]; then
