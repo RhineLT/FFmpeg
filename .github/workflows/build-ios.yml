@@ -303,8 +303,8 @@ jobs:
         Version: 1.4.0
         Requires:
         Libs: -L\${libdir} -lopus
-        Cflags: -I\${includedir}/opus
-        EOF
+    Cflags: -I\${includedir}/opus
+    EOF
     fi
         
     echo "✅ Complete iOS dependencies built successfully"
