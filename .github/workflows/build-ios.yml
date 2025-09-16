@@ -64,7 +64,7 @@ jobs:
         
         echo "Setting up iOS cross-compilation environment..."
         
-  # iOS cross-compilation environment
+        # iOS cross-compilation environment
         export CC="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang"
         export CXX="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++"
         export AR="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/ar"
@@ -86,7 +86,7 @@ jobs:
           -sdk iphoneos \
           -arch arm64 \
           IPHONEOS_DEPLOYMENT_TARGET=${IOS_MIN_VERSION} \
-          build | xcpretty || true
+          build
         mkdir -p "$IOS_PREFIX/lib" "$IOS_PREFIX/include/SDL2" "$IOS_PREFIX/lib/pkgconfig"
         # Copy the built static lib and headers
         if [ -f "build/Release-iphoneos/libSDL2.a" ]; then
@@ -305,9 +305,9 @@ jobs:
         Libs: -L\${libdir} -lopus
         Cflags: -I\${includedir}/opus
         EOF
-        fi
+    fi
         
-  echo "✅ Complete iOS dependencies built successfully"
+    echo "✅ Complete iOS dependencies built successfully"
         
         # Debug: List all pkg-config files
         echo "Debug: Checking pkg-config files:"
@@ -333,14 +333,14 @@ jobs:
         export RANLIB="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/ranlib"
         export STRIP="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/strip"
         
-        # iOS-specific compilation flags
-  export CFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION} -O3"
-  export CXXFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION} -O3"
+    # iOS-specific compilation flags
+    export CFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION} -O3"
+    export CXXFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION} -O3"
         export LDFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION}"
         
         # Set up pkg-config for our iOS libraries
-  export PKG_CONFIG_PATH="$IOS_PREFIX/lib/pkgconfig:/opt/homebrew/lib/pkgconfig"
-  export PKG_CONFIG_LIBDIR="$IOS_PREFIX/lib/pkgconfig"
+    export PKG_CONFIG_PATH="$IOS_PREFIX/lib/pkgconfig:/opt/homebrew/lib/pkgconfig"
+    export PKG_CONFIG_LIBDIR="$IOS_PREFIX/lib/pkgconfig"
         
         # Verify our iOS libraries
         echo "Checking iOS library installations:"
@@ -546,7 +546,7 @@ jobs:
         ```
         
         ## 🛠️ Build Information
-        - **Compiler**: Xcode 15.2 Clang
+  - **Compiler**: Xcode 14.3.1 Clang
         - **Target**: iOS 12.0+ ARM64
         - **Architecture**: arm64 (64-bit)
         - **Optimization**: -O3 with size optimization
