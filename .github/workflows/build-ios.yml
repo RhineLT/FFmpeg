@@ -28,9 +28,10 @@ jobs:
         # Install required build tools and libraries
         brew install nasm yasm pkgconf
         
-        # Install codec libraries (core dependencies)
+        # Install codec libraries (core dependencies - minimal set for iOS)
         brew install x264 x265 libvpx opus libvorbis theora lame
-        brew install libass freetype fontconfig fribidi
+        # Skip libass to avoid cross-compilation issues
+        brew install freetype fontconfig fribidi
         
         # Install additional libraries (with fallback for missing packages)
         brew install sox || echo "sox not available, skipping"
@@ -57,8 +58,8 @@ jobs:
         cd build-ios
         
         # Set up pkg-config paths for Homebrew libraries
-        export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:$PKG_CONFIG_PATH"
-        export PATH="/usr/local/bin:$PATH"
+        export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:$PKG_CONFIG_PATH"
+        export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
         
         # Set up cross-compilation variables
         export CROSS_TOP="${XCODE_PATH}/Platforms/iPhoneOS.platform/Developer"
@@ -70,14 +71,19 @@ jobs:
         export RANLIB="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/ranlib"
         export STRIP="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/strip"
         
-        # Verify libass installation
-        echo "Checking libass installation:"
-        pkg-config --exists libass && echo "✅ libass found" || echo "❌ libass not found"
-        pkg-config --modversion libass || true
-        pkg-config --cflags libass || true
+        # Set cross-compilation flags that work with Homebrew libraries
+        export CPPFLAGS="-I/opt/homebrew/include -I/usr/local/include"
+        export LDFLAGS="-L/opt/homebrew/lib -L/usr/local/lib"
+        
+        # Verify key library installations
+        echo "Checking key library installations:"
+        pkg-config --exists x264 && echo "✅ x264 found" || echo "❌ x264 not found"
+        pkg-config --exists x265 && echo "✅ x265 found" || echo "❌ x265 not found"
         
         # Configure FFmpeg with iOS-specific settings
-        PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:$PKG_CONFIG_PATH" \
+        PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:$PKG_CONFIG_PATH" \
+        CPPFLAGS="-I/opt/homebrew/include -I/usr/local/include" \
+        LDFLAGS="-L/opt/homebrew/lib -L/usr/local/lib" \
         ../configure \
             --prefix=/var/jb/usr \
             --enable-cross-compile \
@@ -89,9 +95,8 @@ jobs:
             --ar="$AR" \
             --ranlib="$RANLIB" \
             --strip="$STRIP" \
-            --sysroot="$IOS_SDK_PATH" \
-            --extra-cflags="-arch arm64 -mios-version-min=$IOS_MIN_VERSION -O3" \
-            --extra-ldflags="-arch arm64 -mios-version-min=$IOS_MIN_VERSION" \
+            --extra-cflags="-arch arm64 -mios-version-min=$IOS_MIN_VERSION -O3 -I/opt/homebrew/include -I/usr/local/include" \
+            --extra-ldflags="-arch arm64 -mios-version-min=$IOS_MIN_VERSION -L/opt/homebrew/lib -L/usr/local/lib" \
             --enable-shared \
             --enable-pthreads \
             --enable-version3 \
@@ -109,7 +114,6 @@ jobs:
             --enable-libvorbis \
             --enable-libtheora \
             --enable-libmp3lame \
-            --enable-libass \
             --enable-libfreetype \
             --enable-libfontconfig \
             --enable-libfribidi \
@@ -157,7 +161,7 @@ jobs:
         Supported Codecs:
         - Video: H.264 (x264), H.265/HEVC (x265), VP8/VP9 (libvpx)
         - Audio: AAC, MP3 (LAME), Opus, Vorbis, Theora
-        - Subtitles: ASS/SSA (libass)
+        - Text/Fonts: FreeType, FontConfig, Fribidi
         - Images: WebP
         
         Installation:
@@ -189,7 +193,7 @@ jobs:
          Features:
           - All major video/audio codecs (H.264, H.265, VP8/VP9)
           - High-quality audio encoding (AAC, MP3, Opus, Vorbis)
-          - Subtitle and text rendering support
+          - Text rendering and font support (FreeType, FontConfig)
           - Network streaming protocols
           - Optimized for iOS ARM64 performance
         CONTROLEOF
@@ -268,7 +272,7 @@ jobs:
           - **完整工具集**: ffmpeg (转换), ffplay (播放), ffprobe (分析)
           - **视频编解码器**: H.264 (x264), H.265/HEVC (x265), VP8/VP9 (libvpx)
           - **音频编解码器**: AAC, MP3 (LAME), Opus, Vorbis, Theora
-          - **字幕支持**: ASS/SSA (libass)
+          - **文本渲染**: FreeType, FontConfig, Fribidi 支持
           - **图像格式**: WebP 支持
           - **网络协议**: HTTP/HTTPS 流媒体支持
           - **性能优化**: 针对 ARM64 架构优化
