@@ -165,6 +165,11 @@ if [ ! -f "$IOS_PREFIX/lib/libopus.a" ]; then
     --enable-static \
     --disable-shared
   make -j"$NPROC" && make install
+  # Ensure opus headers are accessible at include root level
+  if [ -d "$IOS_PREFIX/include/opus" ]; then
+    echo "Copying opus headers to include root for FFmpeg compatibility..."
+    cp "$IOS_PREFIX/include/opus"/*.h "$IOS_PREFIX/include/" || true
+  fi
   popd >/dev/null
   # Ensure pkg-config file exists with correct paths
   if [ ! -f "$IOS_PREFIX/lib/pkgconfig/opus.pc" ]; then
@@ -179,7 +184,7 @@ Description: Opus IETF audio codec
 Version: 1.4.0
 Requires:
 Libs: -L\${libdir} -lopus
-Cflags: -I\${includedir}/opus
+Cflags: -I\${includedir}
 PC
   fi
 fi
