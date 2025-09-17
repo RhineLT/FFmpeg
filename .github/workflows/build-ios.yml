@@ -40,8 +40,8 @@ jobs:
 
       - name: "Build FFmpeg"
         run: |
-          chmod +x ios-build/scripts/build-ffmpeg-core.sh
-          ./ios-build/scripts/build-ffmpeg-core.sh
+          chmod +x ios-build/scripts/build-ffmpeg-libs.sh
+          ./ios-build/scripts/build-ffmpeg-libs.sh
 
       - name: Package artifacts
         shell: bash

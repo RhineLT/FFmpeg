@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[ffmpeg] Configure and build FFmpeg 8.0"
+echo "[ffmpeg] Build FFmpeg libraries only (iOS)"
 
 : "${XCODE_PATH:?XCODE_PATH missing}"
 : "${IOS_SDK_PATH:?IOS_SDK_PATH missing}"
@@ -14,9 +14,9 @@ export AR="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/ar"
 export RANLIB="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/ranlib"
 export STRIP="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/strip"
 
-export CFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION} -fembed-bitcode"
+export CFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION} -O2"
 export CXXFLAGS="$CFLAGS"
-export LDFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION} -L${IOS_PREFIX}/lib"
+export LDFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION}"
 
 export PKG_CONFIG_PATH="$IOS_PREFIX/lib/pkgconfig"
 export PATH="$PATH:$IOS_PREFIX/bin"
@@ -45,7 +45,20 @@ fi
 
 cd ffmpeg
 
-echo "[ffmpeg] Configure build"
+# Test compiler first
+echo "[ffmpeg] Test compiler"
+cat > test.c <<'EOF'
+int main() { return 0; }
+EOF
+
+if ! "$CC" $CFLAGS $LDFLAGS test.c -o test; then
+  echo "ERROR: Compiler test failed"
+  exit 1
+fi
+rm -f test test.c
+echo "Compiler test OK"
+
+echo "[ffmpeg] Configure for static libraries only"
 ./configure \
   --prefix="$IOS_PREFIX" \
   --arch=arm64 \
@@ -64,70 +77,44 @@ echo "[ffmpeg] Configure build"
   --pkg-config-flags="--static" \
   --disable-shared \
   --enable-static \
-  --enable-pic \
+  --disable-programs \
   --disable-debug \
   --disable-doc \
-  --disable-htmlpages \
-  --disable-manpages \
-  --disable-podpages \
-  --disable-txtpages \
-  --disable-programs \
-  --disable-ffmpeg \
-  --disable-ffprobe \
-  --disable-ffplay \
-  --enable-runtime-cpudetect \
   --enable-gpl \
   --enable-version3 \
   --enable-libx264 \
   --enable-libx265 \
   --enable-libvpx \
   --enable-libaom \
-  --enable-libopus \
-  --enable-encoder=libx264 \
-  --enable-encoder=libx265 \
-  --enable-encoder=libvpx_vp8 \
-  --enable-encoder=libvpx_vp9 \
-  --enable-encoder=libaom_av1 \
-  --enable-encoder=libopus \
-  --enable-decoder=h264 \
-  --enable-decoder=hevc \
-  --enable-decoder=vp8 \
-  --enable-decoder=vp9 \
-  --enable-decoder=av1 \
-  --enable-decoder=opus \
-  --enable-protocol=file \
-  --enable-protocol=http \
-  --enable-protocol=https \
-  --enable-protocol=ftp
+  --enable-libopus || { cat ffbuild/config.log; exit 1; }
 
-echo "[ffmpeg] Build FFmpeg"
+echo "[ffmpeg] Build libraries"
 make -j"$NPROC"
 
-echo "[ffmpeg] Install to $IOS_PREFIX"
+echo "[ffmpeg] Install libraries"
 make install
 
-echo "[ffmpeg] Verify libraries"
-ls -la "$IOS_PREFIX/lib/"*.a | grep ffmpeg || true
+echo "[ffmpeg] Build simple test program"
+cat > test_ffmpeg.c <<'EOF'
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+#include <stdio.h>
+
+int main() {
+    printf("FFmpeg version: %s\n", av_version_info());
+    return 0;
+}
+EOF
+
+if "$CC" $CFLAGS test_ffmpeg.c -L"$IOS_PREFIX/lib" -lavformat -lavcodec -lavutil $LDFLAGS -o test_ffmpeg; then
+  echo "✅ FFmpeg test program compiled successfully"
+  ls -la test_ffmpeg
+  file test_ffmpeg
+else
+  echo "❌ FFmpeg test program failed"
+fi
+
+echo "[ffmpeg] Verify installation"
+ls -la "$IOS_PREFIX/lib/libav"*.a || true
 ls -la "$IOS_PREFIX/include/libav"* || true
-
-echo "[ffmpeg] Build programs separately"
-make ffmpeg ffprobe ffplay || true
-
-if [ -f ffmpeg ]; then
-  cp ffmpeg "$IOS_PREFIX/bin/"
-  echo "ffmpeg binary copied"
-  file "$IOS_PREFIX/bin/ffmpeg"
-  otool -L "$IOS_PREFIX/bin/ffmpeg" | head -10
-fi
-
-if [ -f ffprobe ]; then
-  cp ffprobe "$IOS_PREFIX/bin/"
-  echo "ffprobe binary copied"
-fi
-
-if [ -f ffplay ]; then
-  cp ffplay "$IOS_PREFIX/bin/"
-  echo "ffplay binary copied"
-fi
-
-echo "[ffmpeg] FFmpeg build complete!"
+echo "Libraries built successfully!"
