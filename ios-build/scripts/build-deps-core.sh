@@ -194,6 +194,124 @@ Cflags: -I\${includedir}
 PC
 fi
 
+echo "[deps] Build libmp3lame"
+if [ ! -f "$IOS_PREFIX/lib/libmp3lame.a" ]; then
+  rm -f lame-3.100.tar.gz
+  fetch "https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz" "lame-3.100.tar.gz"
+  tar -xzf lame-3.100.tar.gz
+  pushd lame-3.100 >/dev/null
+  ./configure \
+    --host=aarch64-apple-darwin \
+    --prefix="$IOS_PREFIX" \
+    --disable-shared \
+    --enable-static \
+    --disable-frontend \
+    --disable-decoder \
+    --enable-nasm=no
+  make -j"$NPROC" && make install
+  popd >/dev/null
+fi
+
+echo "[deps] Build libvorbis"
+if [ ! -f "$IOS_PREFIX/lib/libvorbis.a" ]; then
+  rm -rf libvorbis && git clone --depth 1 https://github.com/xiph/vorbis.git libvorbis
+  rm -rf libogg && git clone --depth 1 https://github.com/xiph/ogg.git libogg
+  
+  # Build libogg first (dependency for libvorbis)
+  pushd libogg >/dev/null
+  ./autogen.sh
+  ./configure \
+    --host=aarch64-apple-darwin \
+    --prefix="$IOS_PREFIX" \
+    --disable-shared \
+    --enable-static
+  make -j"$NPROC" && make install
+  popd >/dev/null
+  
+  # Build libvorbis
+  pushd libvorbis >/dev/null
+  ./autogen.sh
+  ./configure \
+    --host=aarch64-apple-darwin \
+    --prefix="$IOS_PREFIX" \
+    --disable-shared \
+    --enable-static \
+    --with-ogg="$IOS_PREFIX"
+  make -j"$NPROC" && make install
+  popd >/dev/null
+fi
+
+echo "[deps] Build libwebp"
+if [ ! -f "$IOS_PREFIX/lib/libwebp.a" ]; then
+  rm -rf libwebp && git clone --depth 1 https://chromium.googlesource.com/webm/libwebp.git
+  pushd libwebp >/dev/null
+  ./autogen.sh
+  ./configure \
+    --host=aarch64-apple-darwin \
+    --prefix="$IOS_PREFIX" \
+    --disable-shared \
+    --enable-static \
+    --disable-gl \
+    --disable-sdl \
+    --disable-png \
+    --disable-jpeg \
+    --disable-tiff \
+    --disable-gif
+  make -j"$NPROC" && make install
+  popd >/dev/null
+fi
+
+echo "[deps] Build libfreetype"
+if [ ! -f "$IOS_PREFIX/lib/libfreetype.a" ]; then
+  rm -f freetype-2.13.2.tar.xz
+  fetch "https://download.savannah.gnu.org/releases/freetype/freetype-2.13.2.tar.xz" "freetype-2.13.2.tar.xz"
+  tar -xf freetype-2.13.2.tar.xz
+  pushd freetype-2.13.2 >/dev/null
+  ./configure \
+    --host=aarch64-apple-darwin \
+    --prefix="$IOS_PREFIX" \
+    --disable-shared \
+    --enable-static \
+    --without-png \
+    --without-bzip2 \
+    --without-harfbuzz
+  make -j"$NPROC" && make install
+  popd >/dev/null
+fi
+
+echo "[deps] Build libass"
+if [ ! -f "$IOS_PREFIX/lib/libass.a" ]; then
+  rm -rf libass && git clone --depth 1 https://github.com/libass/libass.git
+  pushd libass >/dev/null
+  ./autogen.sh
+  ./configure \
+    --host=aarch64-apple-darwin \
+    --prefix="$IOS_PREFIX" \
+    --disable-shared \
+    --enable-static \
+    --disable-harfbuzz \
+    --disable-fontconfig
+  make -j"$NPROC" && make install
+  popd >/dev/null
+fi
+
+echo "[deps] Build libtheora"
+if [ ! -f "$IOS_PREFIX/lib/libtheora.a" ]; then
+  rm -rf libtheora && git clone --depth 1 https://github.com/xiph/theora.git libtheora
+  pushd libtheora >/dev/null
+  ./autogen.sh
+  ./configure \
+    --host=aarch64-apple-darwin \
+    --prefix="$IOS_PREFIX" \
+    --disable-shared \
+    --enable-static \
+    --disable-examples \
+    --disable-spec \
+    --with-ogg="$IOS_PREFIX"
+  make -j"$NPROC" && make install
+  popd >/dev/null
+fi
+
 echo "[deps] Build opus"
 if [ ! -f "$IOS_PREFIX/lib/libopus.a" ]; then
   rm -rf opus && git clone --depth 1 https://github.com/xiph/opus.git
@@ -229,6 +347,92 @@ Libs: -L\${libdir} -lopus
 Cflags: -I\${includedir}
 PC
   fi
+fi
+
+echo "[deps] Build libvpx (VP8/VP9)"
+if [ ! -f "$IOS_PREFIX/lib/libvpx.a" ]; then
+  rm -rf libvpx && git clone --depth 1 https://chromium.googlesource.com/webm/libvpx.git
+  pushd libvpx >/dev/null
+  ./configure \
+    --target=arm64-darwin20-gcc \
+    --prefix="$IOS_PREFIX" \
+    --disable-examples \
+    --disable-docs \
+    --disable-unit-tests \
+    --enable-vp8 \
+    --enable-vp9 \
+    --enable-pic \
+    --disable-shared \
+    --enable-static
+  make -j"$NPROC" && make install
+  popd >/dev/null
+fi
+
+echo "[deps] Build libdav1d (AV1 decoder)"
+if [ ! -f "$IOS_PREFIX/lib/libdav1d.a" ]; then
+  rm -rf dav1d && git clone --depth 1 https://code.videolan.org/videolan/dav1d.git
+  pushd dav1d >/dev/null
+  # dav1d uses meson build system
+  if ! command -v meson &> /dev/null; then
+    pip3 install meson ninja
+  fi
+  meson build --prefix="$IOS_PREFIX" \
+    --buildtype=release \
+    --default-library=static \
+    --cross-file=../meson-cross-ios.ini || \
+  meson build --prefix="$IOS_PREFIX" \
+    --buildtype=release \
+    --default-library=static
+  ninja -C build install
+  popd >/dev/null
+fi
+
+echo "[deps] Build libopenjpeg"
+if [ ! -f "$IOS_PREFIX/lib/libopenjp2.a" ]; then
+  rm -rf openjpeg && git clone --depth 1 https://github.com/uclouvain/openjpeg.git
+  pushd openjpeg >/dev/null
+  mkdir build && cd build
+  cmake .. \
+    -DCMAKE_INSTALL_PREFIX="$IOS_PREFIX" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DCMAKE_OSX_ARCHITECTURES=arm64 \
+    -DCMAKE_OSX_DEPLOYMENT_TARGET=${IOS_MIN_VERSION} \
+    -DCMAKE_OSX_SYSROOT="$IOS_SDK_PATH" \
+    -DBUILD_CODEC=OFF
+  make -j"$NPROC" && make install
+  popd >/dev/null
+fi
+
+echo "[deps] Build libspeex"
+if [ ! -f "$IOS_PREFIX/lib/libspeex.a" ]; then
+  rm -rf speex && git clone --depth 1 https://github.com/xiph/speex.git
+  pushd speex >/dev/null
+  ./autogen.sh
+  ./configure \
+    --host=aarch64-apple-darwin \
+    --prefix="$IOS_PREFIX" \
+    --disable-shared \
+    --enable-static
+  make -j"$NPROC" && make install
+  popd >/dev/null
+fi
+
+echo "[deps] Build libxml2"
+if [ ! -f "$IOS_PREFIX/lib/libxml2.a" ]; then
+  rm -f libxml2-v2.12.8.tar.xz
+  fetch "https://download.gnome.org/sources/libxml2/2.12/libxml2-2.12.8.tar.xz" "libxml2-v2.12.8.tar.xz"
+  tar -xf libxml2-v2.12.8.tar.xz
+  pushd libxml2-2.12.8 >/dev/null
+  ./configure \
+    --host=aarch64-apple-darwin \
+    --prefix="$IOS_PREFIX" \
+    --disable-shared \
+    --enable-static \
+    --without-python \
+    --without-lzma
+  make -j"$NPROC" && make install
+  popd >/dev/null
 fi
 
 echo "[deps] Summary - Core libraries built:"
