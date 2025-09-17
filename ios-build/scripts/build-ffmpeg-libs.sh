@@ -83,7 +83,6 @@ echo "[ffmpeg] Configure for static libraries only"
   --enable-version3 \
   --enable-libx264 \
   --enable-libx265 \
-  --enable-libvpx \
   --enable-libaom \
   --enable-libopus || { cat ffbuild/config.log; exit 1; }
 
