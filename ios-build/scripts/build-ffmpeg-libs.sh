@@ -62,7 +62,6 @@ echo "[ffmpeg] Configure for static libraries only"
 ./configure \
   --prefix="$IOS_PREFIX" \
   --arch=arm64 \
-  --cpu=arm64 \
   --target-os=darwin \
   --enable-cross-compile \
   --cc="$CC" \
