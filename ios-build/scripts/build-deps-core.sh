@@ -194,33 +194,33 @@ Cflags: -I\${includedir}
 PC
 fi
 
+echo "[deps] Build libmp3lame"
+if [ ! -f "$IOS_PREFIX/lib/libmp3lame.a" ]; then
+  rm -f lame-3.100.tar.gz
+  fetch "https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz" "lame-3.100.tar.gz"
+  tar -xzf lame-3.100.tar.gz
+  pushd lame-3.100 >/dev/null
+  ./configure \
+    --host=aarch64-apple-darwin \
+    --prefix="$IOS_PREFIX" \
+    --disable-shared \
+    --enable-static \
+    --disable-frontend \
+    --disable-decoder \
+    --enable-nasm=no
+  make -j"$NPROC" && make install
+  popd >/dev/null
+  
+  # Verify installation
+  echo "[deps] libmp3lame verification:"
+  ls -la "$IOS_PREFIX/include/" | grep lame || echo "lame headers not found"
+  ls -la "$IOS_PREFIX/include/lame/" 2>/dev/null || echo "lame directory not found"
+  ls -la "$IOS_PREFIX/lib/" | grep mp3lame || echo "libmp3lame.a not found"
+fi
+
+# Keep other libraries disabled for now - will add one by one
 # Temporarily disable additional libraries to focus on core 4 libraries first
 # Will re-enable after ensuring stable base configuration
-echo "[deps] Skip libmp3lame (temporarily disabled for stability)"
-# echo "[deps] Build libmp3lame"
-# if [ ! -f "$IOS_PREFIX/lib/libmp3lame.a" ]; then
-#   rm -f lame-3.100.tar.gz
-#   fetch "https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz" "lame-3.100.tar.gz"
-#   tar -xzf lame-3.100.tar.gz
-#   pushd lame-3.100 >/dev/null
-#   ./configure \
-#     --host=aarch64-apple-darwin \
-#     --prefix="$IOS_PREFIX" \
-#     --disable-shared \
-#     --enable-static \
-#     --disable-frontend \
-#     --disable-decoder \
-#     --enable-nasm=no
-#   make -j"$NPROC" && make install
-#   popd >/dev/null
-#   
-#   # Verify installation
-#   echo "[deps] libmp3lame verification:"
-#   ls -la "$IOS_PREFIX/include/" | grep lame || echo "lame headers not found"
-#   ls -la "$IOS_PREFIX/include/lame/" 2>/dev/null || echo "lame directory not found"
-#   ls -la "$IOS_PREFIX/lib/" | grep mp3lame || echo "libmp3lame.a not found"
-# fi
-
 echo "[deps] Skip libvorbis (temporarily disabled for stability)"
 # echo "[deps] Build libvorbis"
 # if [ ! -f "$IOS_PREFIX/lib/libvorbis.a" ]; then
