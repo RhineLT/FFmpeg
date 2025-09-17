@@ -122,7 +122,6 @@ if [ ! -f "$IOS_PREFIX/lib/libvpx.a" ]; then
   rm -rf libvpx && git clone --depth 1 https://chromium.googlesource.com/webm/libvpx.git
   pushd libvpx >/dev/null
   
-  export CROSS="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/"
   export CFLAGS="-arch arm64 -mios-version-min=$IOS_MIN_VERSION -isysroot $IOS_SDK_PATH"
   export LDFLAGS="-arch arm64 -mios-version-min=$IOS_MIN_VERSION -isysroot $IOS_SDK_PATH"
   
@@ -136,8 +135,7 @@ if [ ! -f "$IOS_PREFIX/lib/libvpx.a" ]; then
     --enable-vp9 \
     --enable-pic \
     --disable-shared \
-    --enable-static \
-    --sdk-path="$IOS_SDK_PATH"
+    --enable-static
   make -j"$NPROC" && make install
   popd >/dev/null
   
