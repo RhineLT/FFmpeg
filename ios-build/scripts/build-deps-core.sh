@@ -78,6 +78,7 @@ if [ ! -f "$IOS_PREFIX/lib/libx264.a" ]; then
     --host=arm-apple-darwin \
     --prefix="$IOS_PREFIX" \
     --enable-static \
+    --disable-shared \
     --disable-asm \
     --disable-opencl \
     --enable-pic
@@ -93,6 +94,7 @@ if [ ! -f "$IOS_PREFIX/lib/libx265.a" ]; then
     -DCMAKE_INSTALL_PREFIX="$IOS_PREFIX" \
     -DCMAKE_BUILD_TYPE=Release \
     -DENABLE_SHARED=OFF \
+    -DENABLE_STATIC=ON \
     -DENABLE_CLI=OFF \
     -DENABLE_ASSEMBLY=OFF \
     -DCMAKE_OSX_ARCHITECTURES=arm64 \
@@ -167,6 +169,7 @@ if [ ! -f "$IOS_PREFIX/lib/libaom.a" ]; then
     -DCMAKE_INSTALL_PREFIX="$IOS_PREFIX" \
     -DCMAKE_BUILD_TYPE=Release \
     -DENABLE_SHARED=OFF \
+    -DENABLE_STATIC=ON \
     -DENABLE_NASM=OFF \
     -DCMAKE_OSX_ARCHITECTURES=arm64 \
     -DCMAKE_OSX_DEPLOYMENT_TARGET=${IOS_MIN_VERSION} \

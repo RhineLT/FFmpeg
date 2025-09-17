@@ -62,17 +62,3 @@ jobs:
             ffmpeg-8.0-ios-arm64.deb
             ffmpeg-ios-arm64/
           retention-days: 30
-
-      - name: Create Release (main only)
-        if: github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v8.0-ios16x-${{ github.run_number }}
-          name: FFmpeg 8.0 for iOS 16.x ARM64 - Build ${{ github.run_number }}
-          body: |
-            FFmpeg 8.0 build for jailbroken iOS (arm64), built on Xcode 14.3.1 / iOS 16.x SDK.
-          files: |
-            ffmpeg-8.0-ios-arm64.tar.gz
-            ffmpeg-8.0-ios-arm64.deb
-          draft: false
-          prerelease: false
