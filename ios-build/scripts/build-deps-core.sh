@@ -112,7 +112,7 @@ includedir=\${prefix}/include
 Name: x265
 Description: H.265/HEVC video encoder
 Version: 3.6
-Libs: -L\${libdir} -lx265
+Libs: -L\${libdir} -lx265 -lc++ -lSystem
 Cflags: -I\${includedir}
 PC
 fi
@@ -187,7 +187,7 @@ includedir=\${prefix}/include
 Name: aom
 Description: Alliance for Open Media AV1 codec library v3.13.1.
 Version: 3.13.1
-Libs: -L\${libdir} -laom
+Libs: -L\${libdir} -laom -lc++ -lSystem
 Cflags: -I\${includedir}
 PC
 fi
