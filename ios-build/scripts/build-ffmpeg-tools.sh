@@ -64,7 +64,6 @@ echo "[tools] Configure for command-line tools"
   --pkg-config-flags="--static" \
   --disable-shared \
   --enable-static \
-  --enable-programs \
   --disable-debug \
   --disable-doc \
   --disable-network \
@@ -82,33 +81,12 @@ echo "[tools] Configure for command-line tools"
   --enable-libopus || { cat ffbuild/config.log; exit 1; }
 
 echo "[tools] Build command-line tools"
-make -j"$NPROC" ffmpeg_g ffprobe_g ffplay_g
+make -j"$NPROC"
 
-echo "[tools] Strip and install binaries"
-mkdir -p "$IOS_PREFIX/bin"
+echo "[tools] Install tools and verify"
+make install
 
-if [ -f ffmpeg_g ]; then
-  "$STRIP" ffmpeg_g -o "$IOS_PREFIX/bin/ffmpeg"
-  echo "✅ ffmpeg tool built"
-else
-  echo "❌ ffmpeg tool failed"
-fi
-
-if [ -f ffprobe_g ]; then
-  "$STRIP" ffprobe_g -o "$IOS_PREFIX/bin/ffprobe"
-  echo "✅ ffprobe tool built"
-else
-  echo "❌ ffprobe tool failed"
-fi
-
-if [ -f ffplay_g ]; then
-  "$STRIP" ffplay_g -o "$IOS_PREFIX/bin/ffplay"
-  echo "✅ ffplay tool built"
-else
-  echo "❌ ffplay tool failed"
-fi
-
-echo "[tools] Verify tools"
+echo "[tools] Verify tools installation"
 ls -la "$IOS_PREFIX/bin/ff"* || true
 file "$IOS_PREFIX/bin/ff"* || true
 
