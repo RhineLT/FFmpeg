@@ -99,12 +99,8 @@ echo "[ffmpeg] Configure for static libraries only - Core codecs only"
   --enable-libx265 \
   --enable-libaom \
   --enable-libopus \
-  --enable-libmp3lame \
   --enable-libvorbis \
-  --enable-libwebp \
-  --enable-libfreetype \
-  --enable-libvpx \
-  --enable-libspeex || { cat ffbuild/config.log; exit 1; }
+  --enable-libvpx || { cat ffbuild/config.log; exit 1; }
 
 echo "[ffmpeg] Build libraries"
 make -j"$NPROC"

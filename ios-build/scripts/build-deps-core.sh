@@ -210,6 +210,12 @@ if [ ! -f "$IOS_PREFIX/lib/libmp3lame.a" ]; then
     --enable-nasm=no
   make -j"$NPROC" && make install
   popd >/dev/null
+  
+  # Verify installation
+  echo "[deps] libmp3lame verification:"
+  ls -la "$IOS_PREFIX/include/" | grep lame || echo "lame headers not found"
+  ls -la "$IOS_PREFIX/include/lame/" 2>/dev/null || echo "lame directory not found"
+  ls -la "$IOS_PREFIX/lib/" | grep mp3lame || echo "libmp3lame.a not found"
 fi
 
 echo "[deps] Build libvorbis"
