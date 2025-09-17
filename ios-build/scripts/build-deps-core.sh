@@ -234,6 +234,20 @@ if [ ! -f "$IOS_PREFIX/lib/libvorbis.a" ]; then
   make -j"$NPROC" && make install
   popd >/dev/null
   
+  # Create pkg-config file for ogg
+  cat > "$IOS_PREFIX/lib/pkgconfig/ogg.pc" <<PC
+prefix=$IOS_PREFIX
+exec_prefix=\${prefix}
+libdir=\${exec_prefix}/lib
+includedir=\${prefix}/include
+
+Name: ogg
+Description: ogg is a library for manipulating ogg bitstreams
+Version: 1.3.5
+Libs: -L\${libdir} -logg
+Cflags: -I\${includedir}
+PC
+  
   # Build libvorbis
   pushd libvorbis >/dev/null
   ./autogen.sh
@@ -245,6 +259,35 @@ if [ ! -f "$IOS_PREFIX/lib/libvorbis.a" ]; then
     --with-ogg="$IOS_PREFIX"
   make -j"$NPROC" && make install
   popd >/dev/null
+  
+  # Create custom pkg-config files for vorbis
+  cat > "$IOS_PREFIX/lib/pkgconfig/vorbis.pc" <<PC
+prefix=$IOS_PREFIX
+exec_prefix=\${prefix}
+libdir=\${exec_prefix}/lib
+includedir=\${prefix}/include
+
+Name: vorbis
+Description: vorbis is the primary Ogg Vorbis library
+Version: 1.3.7
+Requires: ogg
+Libs: -L\${libdir} -lvorbis
+Cflags: -I\${includedir}
+PC
+  
+  cat > "$IOS_PREFIX/lib/pkgconfig/vorbisenc.pc" <<PC
+prefix=$IOS_PREFIX
+exec_prefix=\${prefix}
+libdir=\${exec_prefix}/lib
+includedir=\${prefix}/include
+
+Name: vorbisenc
+Description: vorbisenc is a library that provides a convenient API for setting up an encoding environment using libvorbis
+Version: 1.3.7
+Requires: vorbis
+Libs: -L\${libdir} -lvorbisenc
+Cflags: -I\${includedir}
+PC
 fi
 
 echo "[deps] Build libwebp"
