@@ -258,6 +258,21 @@ if [ ! -f "$IOS_PREFIX/lib/libvpx.a" ]; then
     --enable-static
   make -j"$NPROC" && make install
   popd >/dev/null
+  
+  # Create pkg-config file for vpx
+  cat > "$IOS_PREFIX/lib/pkgconfig/vpx.pc" <<PC
+prefix=$IOS_PREFIX
+exec_prefix=\${prefix}
+libdir=\${exec_prefix}/lib
+includedir=\${prefix}/include
+
+Name: vpx
+Description: WebM VP8/VP9 Codec SDK
+Version: 1.13.1
+Requires:
+Libs: -L\${libdir} -lvpx
+Cflags: -I\${includedir}
+PC
 fi
 
 # Keep other libraries disabled for now - will add one by one
