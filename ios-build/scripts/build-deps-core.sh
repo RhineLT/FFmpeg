@@ -173,6 +173,20 @@ if [ ! -f "$IOS_PREFIX/lib/libaom.a" ]; then
     -DAOM_TARGET_CPU=arm64
   make -j"$NPROC" && make install
   popd >/dev/null
+  
+  # Manually create aom.pc file since cmake doesn't generate it properly
+  cat > "$IOS_PREFIX/lib/pkgconfig/aom.pc" <<PC
+prefix=$IOS_PREFIX
+exec_prefix=\${prefix}
+libdir=\${exec_prefix}/lib
+includedir=\${prefix}/include
+
+Name: aom
+Description: Alliance for Open Media AV1 codec library v3.13.1.
+Version: 3.13.1
+Libs: -L\${libdir} -laom
+Cflags: -I\${includedir}
+PC
 fi
 
 echo "[deps] Build opus"
