@@ -3,19 +3,28 @@ set -euo pipefail
 
 echo "[package] Create artifacts (tar.gz and .deb)"
 
-BUILD_DIR=build-ios
+: "${IOS_PREFIX:?IOS_PREFIX missing}"
+
+BUILD_DIR="$IOS_PREFIX/bin"
 OUT_DIR=ffmpeg-ios-arm64
 DEB_ROOT=ffmpeg-ios-deb
 
-for bin in ffmpeg ffplay ffprobe; do
+for bin in ffmpeg ffprobe; do
   test -f "$BUILD_DIR/$bin" || { echo "missing $BUILD_DIR/$bin"; exit 1; }
 done
+
+# Check if ffplay exists (optional)
+if [ ! -f "$BUILD_DIR/ffplay" ]; then
+  echo "Warning: ffplay not found, continuing without it"
+fi
 
 rm -rf "$OUT_DIR" "$DEB_ROOT" *.tar.gz *.deb
 mkdir -p "$OUT_DIR"
 
 cp "$BUILD_DIR/ffmpeg" "$OUT_DIR/"
-cp "$BUILD_DIR/ffplay" "$OUT_DIR/"
+if [ -f "$BUILD_DIR/ffplay" ]; then
+  cp "$BUILD_DIR/ffplay" "$OUT_DIR/"
+fi
 cp "$BUILD_DIR/ffprobe" "$OUT_DIR/"
 
 cat > "$OUT_DIR/install.sh" <<'EOS'
@@ -26,8 +35,14 @@ if [ ! -d "/var/jb" ]; then
   exit 1
 fi
 mkdir -p /var/jb/usr/bin /var/jb/usr/share/man/man1
-cp ffmpeg ffplay ffprobe /var/jb/usr/bin/
-chmod 755 /var/jb/usr/bin/ffmpeg /var/jb/usr/bin/ffplay /var/jb/usr/bin/ffprobe
+cp ffmpeg ffprobe /var/jb/usr/bin/
+if [ -f ffplay ]; then
+  cp ffplay /var/jb/usr/bin/
+fi
+chmod 755 /var/jb/usr/bin/ffmpeg /var/jb/usr/bin/ffprobe
+if [ -f /var/jb/usr/bin/ffplay ]; then
+  chmod 755 /var/jb/usr/bin/ffplay
+fi
 echo "FFmpeg installed to /var/jb/usr/bin"
 EOS
 chmod +x "$OUT_DIR/install.sh"
@@ -49,7 +64,9 @@ tar -czf ffmpeg-8.0-ios-arm64.tar.gz "$OUT_DIR"/
 
 mkdir -p "$DEB_ROOT/DEBIAN" "$DEB_ROOT/var/jb/usr/bin"
 cp "$BUILD_DIR/ffmpeg" "$DEB_ROOT/var/jb/usr/bin/"
-cp "$BUILD_DIR/ffplay" "$DEB_ROOT/var/jb/usr/bin/"
+if [ -f "$BUILD_DIR/ffplay" ]; then
+  cp "$BUILD_DIR/ffplay" "$DEB_ROOT/var/jb/usr/bin/"
+fi
 cp "$BUILD_DIR/ffprobe" "$DEB_ROOT/var/jb/usr/bin/"
 
 cat > "$DEB_ROOT/DEBIAN/control" <<'EOF'
