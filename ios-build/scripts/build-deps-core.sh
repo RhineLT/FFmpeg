@@ -279,6 +279,21 @@ if [ ! -f "$IOS_PREFIX/lib/libfreetype.a" ]; then
   popd >/dev/null
 fi
 
+echo "[deps] Build fribidi (dependency for libass)"
+if [ ! -f "$IOS_PREFIX/lib/libfribidi.a" ]; then
+  rm -rf fribidi && git clone --depth 1 https://github.com/fribidi/fribidi.git
+  pushd fribidi >/dev/null
+  ./autogen.sh
+  ./configure \
+    --host=aarch64-apple-darwin \
+    --prefix="$IOS_PREFIX" \
+    --disable-shared \
+    --enable-static \
+    --disable-deprecated
+  make -j"$NPROC" && make install
+  popd >/dev/null
+fi
+
 echo "[deps] Build libass"
 if [ ! -f "$IOS_PREFIX/lib/libass.a" ]; then
   rm -rf libass && git clone --depth 1 https://github.com/libass/libass.git
@@ -311,6 +326,10 @@ if [ ! -f "$IOS_PREFIX/lib/libtheora.a" ]; then
   make -j"$NPROC" && make install
   popd >/dev/null
 fi
+
+# 暂时跳过这些库，专注于核心稳定的库
+# 后续可以逐步添加
+echo "[deps] Skip complex libraries (libdav1d, libopenjpeg, libxml2) - will add later"
 
 echo "[deps] Build opus"
 if [ ! -f "$IOS_PREFIX/lib/libopus.a" ]; then
@@ -368,42 +387,6 @@ if [ ! -f "$IOS_PREFIX/lib/libvpx.a" ]; then
   popd >/dev/null
 fi
 
-echo "[deps] Build libdav1d (AV1 decoder)"
-if [ ! -f "$IOS_PREFIX/lib/libdav1d.a" ]; then
-  rm -rf dav1d && git clone --depth 1 https://code.videolan.org/videolan/dav1d.git
-  pushd dav1d >/dev/null
-  # dav1d uses meson build system
-  if ! command -v meson &> /dev/null; then
-    pip3 install meson ninja
-  fi
-  meson build --prefix="$IOS_PREFIX" \
-    --buildtype=release \
-    --default-library=static \
-    --cross-file=../meson-cross-ios.ini || \
-  meson build --prefix="$IOS_PREFIX" \
-    --buildtype=release \
-    --default-library=static
-  ninja -C build install
-  popd >/dev/null
-fi
-
-echo "[deps] Build libopenjpeg"
-if [ ! -f "$IOS_PREFIX/lib/libopenjp2.a" ]; then
-  rm -rf openjpeg && git clone --depth 1 https://github.com/uclouvain/openjpeg.git
-  pushd openjpeg >/dev/null
-  mkdir build && cd build
-  cmake .. \
-    -DCMAKE_INSTALL_PREFIX="$IOS_PREFIX" \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DBUILD_SHARED_LIBS=OFF \
-    -DCMAKE_OSX_ARCHITECTURES=arm64 \
-    -DCMAKE_OSX_DEPLOYMENT_TARGET=${IOS_MIN_VERSION} \
-    -DCMAKE_OSX_SYSROOT="$IOS_SDK_PATH" \
-    -DBUILD_CODEC=OFF
-  make -j"$NPROC" && make install
-  popd >/dev/null
-fi
-
 echo "[deps] Build libspeex"
 if [ ! -f "$IOS_PREFIX/lib/libspeex.a" ]; then
   rm -rf speex && git clone --depth 1 https://github.com/xiph/speex.git
@@ -418,22 +401,9 @@ if [ ! -f "$IOS_PREFIX/lib/libspeex.a" ]; then
   popd >/dev/null
 fi
 
-echo "[deps] Build libxml2"
-if [ ! -f "$IOS_PREFIX/lib/libxml2.a" ]; then
-  rm -f libxml2-v2.12.8.tar.xz
-  fetch "https://download.gnome.org/sources/libxml2/2.12/libxml2-2.12.8.tar.xz" "libxml2-v2.12.8.tar.xz"
-  tar -xf libxml2-v2.12.8.tar.xz
-  pushd libxml2-2.12.8 >/dev/null
-  ./configure \
-    --host=aarch64-apple-darwin \
-    --prefix="$IOS_PREFIX" \
-    --disable-shared \
-    --enable-static \
-    --without-python \
-    --without-lzma
-  make -j"$NPROC" && make install
-  popd >/dev/null
-fi
+# 暂时跳过这些库，专注于核心稳定的库
+# 后续可以逐步添加
+echo "[deps] Skip complex libraries (libdav1d, libopenjpeg, libxml2) - will add later"
 
 echo "[deps] Summary - Core libraries built:"
 ls -la "$IOS_PREFIX/lib/"*.a || true
