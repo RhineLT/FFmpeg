@@ -241,6 +241,25 @@ if [ ! -f "$IOS_PREFIX/lib/libwebp.a" ]; then
   popd >/dev/null
 fi
 
+echo "[deps] Build libvpx (VP8/VP9)"
+if [ ! -f "$IOS_PREFIX/lib/libvpx.a" ]; then
+  rm -rf libvpx && git clone --depth 1 https://chromium.googlesource.com/webm/libvpx.git
+  pushd libvpx >/dev/null
+  ./configure \
+    --target=arm64-darwin20-gcc \
+    --prefix="$IOS_PREFIX" \
+    --disable-examples \
+    --disable-docs \
+    --disable-unit-tests \
+    --enable-vp8 \
+    --enable-vp9 \
+    --enable-pic \
+    --disable-shared \
+    --enable-static
+  make -j"$NPROC" && make install
+  popd >/dev/null
+fi
+
 # Keep other libraries disabled for now - will add one by one
 echo "[deps] Skip libvorbis (temporarily disabled for stability)"
 # echo "[deps] Build libvorbis"

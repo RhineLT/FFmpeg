@@ -79,7 +79,8 @@ echo "[tools] Configure for command-line tools"
   --enable-libx265 \
   --enable-libaom \
   --enable-libopus \
-  --enable-libwebp || { cat ffbuild/config.log; exit 1; }
+  --enable-libwebp \
+  --enable-libvpx || { cat ffbuild/config.log; exit 1; }
 
 echo "[tools] Build command-line tools"
 make -j"$NPROC"
