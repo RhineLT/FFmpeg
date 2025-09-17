@@ -163,9 +163,7 @@ if [ ! -f "$IOS_PREFIX/lib/libopus.a" ]; then
     --host=arm-apple-darwin \
     --prefix="$IOS_PREFIX" \
     --enable-static \
-    --disable-shared \
-    --disable-doc \
-    --disable-extra-programs
+    --disable-shared
   make -j"$NPROC" && make install
   popd >/dev/null
   # Ensure pkg-config file exists with correct paths
