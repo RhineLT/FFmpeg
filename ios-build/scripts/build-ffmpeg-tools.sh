@@ -14,11 +14,10 @@ export AR="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/ar"
 export RANLIB="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/ranlib"
 export STRIP="${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/strip"
 
-export CFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION} -O2"
+# 添加iOS 16兼容的链接选项
+export CFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION} -O2 -fno-common"
 export CXXFLAGS="$CFLAGS"
-export LDFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION}"
-
-export PKG_CONFIG_PATH="$IOS_PREFIX/lib/pkgconfig"
+export LDFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION} -Wl,-rpath,@executable_path -Wl,-rpath,@loader_path"export PKG_CONFIG_PATH="$IOS_PREFIX/lib/pkgconfig"
 export PKG_CONFIG_LIBDIR="$IOS_PREFIX/lib/pkgconfig"
 export PATH="$PATH:$IOS_PREFIX/bin"
 
@@ -89,5 +88,22 @@ make install
 echo "[tools] Verify tools installation"
 ls -la "$IOS_PREFIX/bin/ff"* || true
 file "$IOS_PREFIX/bin/ff"* || true
+
+echo "[tools] Code sign binaries for iOS 16.5+"
+# 为iOS 16.5创建ad-hoc签名
+for binary in "$IOS_PREFIX/bin/ff"*; do
+  if [ -f "$binary" ]; then
+    echo "Signing $binary"
+    # 使用ad-hoc签名（- 表示使用本地identity）
+    codesign --force --sign - --entitlements "../ffmpeg.entitlements" --deep --timestamp "$binary" || {
+      echo "Warning: Code signing failed for $binary, trying without entitlements"
+      codesign --force --sign - --deep "$binary" || {
+        echo "Warning: Basic code signing also failed for $binary"
+      }
+    }
+    # 验证签名
+    codesign --verify --verbose "$binary" && echo "✓ $binary signed successfully" || echo "✗ $binary signing failed"
+  fi
+done
 
 echo "Command-line tools built successfully!"

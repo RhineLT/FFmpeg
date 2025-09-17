@@ -48,16 +48,24 @@ EOS
 chmod +x "$OUT_DIR/install.sh"
 
 cat > "$OUT_DIR/README.md" <<'EOS'
-# FFmpeg for iOS ARM64 (Jailbroken)
+# FFmpeg for iOS ARM64 (Jailbroken) - iOS 16.5 兼容版
 
 用法：
 - 手动安装：解压后在设备上执行 ./install.sh
 - DEB 安装：安装 .deb 包（推荐）
 
-建议使用 ldid 为二进制签名：
-ldid -S /var/jb/usr/bin/ffmpeg
-ldid -S /var/jb/usr/bin/ffplay
-ldid -S /var/jb/usr/bin/ffprobe
+已配置：
+- 目标版本：iOS 16.0+（兼容iOS 16.5）
+- 代码签名：ad-hoc签名，包含必要的entitlements
+- 静态链接：减少对系统库的依赖
+- 编码器支持：x264, x265, AV1, Opus
+
+如果在越狱设备上仍然无法运行，可尝试：
+1. 确保有执行权限：chmod +x /var/jb/usr/bin/ff*
+2. 使用ldid重新签名：
+   ldid -S /var/jb/usr/bin/ffmpeg
+   ldid -S /var/jb/usr/bin/ffprobe
+3. 检查PATH是否包含 /var/jb/usr/bin
 EOS
 
 tar -czf ffmpeg-8.0-ios-arm64.tar.gz "$OUT_DIR"/

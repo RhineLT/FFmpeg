@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- 平台应用程序 - 允许底层系统访问 -->
+    <key>platform-application</key>
+    <true/>
+    
+    <!-- 允许文件系统访问 -->
+    <key>com.apple.private.security.no-container</key>
+    <true/>
+    
+    <!-- 允许任务端口访问 -->
+    <key>task_for_pid-allow</key>
+    <true/>
+    
+    <!-- 允许未签名代码执行 -->
+    <key>get-task-allow</key>
+    <true/>
+    
+    <!-- 允许动态代码签名 -->
+    <key>dynamic-codesigning</key>
+    <true/>
+    
+    <!-- 跳过库验证 -->
+    <key>com.apple.private.skip-library-validation</key>
+    <true/>
+    
+    <!-- 允许网络权限 -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+    
+    <!-- 运行未签名代码 -->
+    <key>com.apple.private.cs.debugger</key>
+    <true/>
+</dict>
+</plist>

@@ -5,7 +5,7 @@ set -euo pipefail
 
 XCODE_PATH=$(xcode-select -p)
 IOS_SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
-IOS_MIN_VERSION=${IOS_MIN_VERSION:-12.0}
+IOS_MIN_VERSION=${IOS_MIN_VERSION:-16.0}
 
 # Use repository-root/ios-build/out as prefix to keep artifacts contained
 ROOT_DIR=$(pwd)
