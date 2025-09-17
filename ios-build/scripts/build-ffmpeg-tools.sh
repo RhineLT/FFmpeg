@@ -82,7 +82,6 @@ echo "[tools] Configure for command-line tools"
   --enable-libvorbis \
   --enable-libwebp \
   --enable-libfreetype \
-  --enable-libass \
   --enable-libvpx \
   --enable-libspeex || { cat ffbuild/config.log; exit 1; }
 

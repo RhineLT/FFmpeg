@@ -279,36 +279,41 @@ if [ ! -f "$IOS_PREFIX/lib/libfreetype.a" ]; then
   popd >/dev/null
 fi
 
-echo "[deps] Build fribidi (dependency for libass)"
-if [ ! -f "$IOS_PREFIX/lib/libfribidi.a" ]; then
-  rm -rf fribidi && git clone --depth 1 https://github.com/fribidi/fribidi.git
-  pushd fribidi >/dev/null
-  ./autogen.sh
-  ./configure \
-    --host=aarch64-apple-darwin \
-    --prefix="$IOS_PREFIX" \
-    --disable-shared \
-    --enable-static \
-    --disable-deprecated
-  make -j"$NPROC" && make install
-  popd >/dev/null
-fi
+# 暂时跳过fribidi和libass，它们有复杂的交叉编译依赖
+echo "[deps] Skip fribidi/libass - complex cross-compile dependencies"
+# echo "[deps] Build fribidi (dependency for libass)"
+# if [ ! -f "$IOS_PREFIX/lib/libfribidi.a" ]; then
+#   rm -rf fribidi && git clone --depth 1 https://github.com/fribidi/fribidi.git
+#   pushd fribidi >/dev/null
+#   ./autogen.sh
+#   ./configure \
+#     --host=aarch64-apple-darwin \
+#     --build=x86_64-apple-darwin \
+#     --prefix="$IOS_PREFIX" \
+#     --disable-shared \
+#     --enable-static \
+#     --disable-deprecated \
+#     --disable-docs \
+#     CPPFLAGS=-DFRIBIDI_ENTRY=extern
+#   make -j"$NPROC" && make install
+#   popd >/dev/null
+# fi
 
-echo "[deps] Build libass"
-if [ ! -f "$IOS_PREFIX/lib/libass.a" ]; then
-  rm -rf libass && git clone --depth 1 https://github.com/libass/libass.git
-  pushd libass >/dev/null
-  ./autogen.sh
-  ./configure \
-    --host=aarch64-apple-darwin \
-    --prefix="$IOS_PREFIX" \
-    --disable-shared \
-    --enable-static \
-    --disable-harfbuzz \
-    --disable-fontconfig
-  make -j"$NPROC" && make install
-  popd >/dev/null
-fi
+# echo "[deps] Build libass"
+# if [ ! -f "$IOS_PREFIX/lib/libass.a" ]; then
+#   rm -rf libass && git clone --depth 1 https://github.com/libass/libass.git
+#   pushd libass >/dev/null
+#   ./autogen.sh
+#   ./configure \
+#     --host=aarch64-apple-darwin \
+#     --prefix="$IOS_PREFIX" \
+#     --disable-shared \
+#     --enable-static \
+#     --disable-harfbuzz \
+#     --disable-fontconfig
+#   make -j"$NPROC" && make install
+#   popd >/dev/null
+# fi
 
 echo "[deps] Build libtheora"
 if [ ! -f "$IOS_PREFIX/lib/libtheora.a" ]; then
