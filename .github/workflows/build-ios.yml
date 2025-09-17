@@ -33,15 +33,15 @@ jobs:
         run: |
           bash ios-build/scripts/setup-env.sh
 
-      - name: Build iOS deps
-        shell: bash
+      - name: "Build dependencies"
         run: |
-          bash ios-build/scripts/build-deps.sh
+          chmod +x ios-build/scripts/build-deps-core.sh
+          ./ios-build/scripts/build-deps-core.sh
 
-      - name: Build FFmpeg
-        shell: bash
+      - name: "Build FFmpeg"
         run: |
-          bash ios-build/scripts/build-ffmpeg.sh
+          chmod +x ios-build/scripts/build-ffmpeg-core.sh
+          ./ios-build/scripts/build-ffmpeg-core.sh
 
       - name: Package artifacts
         shell: bash

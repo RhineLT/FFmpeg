@@ -22,51 +22,8 @@ export PKG_CONFIG_PATH="$IOS_PREFIX/lib/pkgconfig"
 export PKG_CONFIG_LIBDIR="$IOS_PREFIX/lib/pkgconfig"
 
 # Debug pkg-config issue
-echo "Debug: PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
-ls -la "$IOS_PREFIX/lib/pkgconfig/" || true
-echo "Testing libass detection:"
-pkg-config --exists libass && echo "libass FOUND" || echo "libass NOT found"
-pkg-config --modversion libass || true
-echo "Content of libass.pc:"
-cat "$IOS_PREFIX/lib/pkgconfig/libass.pc" || true
-
-# Test our wrapper directly
-echo "Testing wrapper with explicit path:"
-/tmp/pkg-config-wrapper --exists libass && echo "Wrapper: libass FOUND" || echo "Wrapper: libass NOT found"
-echo "Files exist check:"
-ls -la "$IOS_PREFIX/lib/libass.a" 2>/dev/null && echo "libass.a EXISTS" || echo "libass.a MISSING"
-ls -la "$IOS_PREFIX/include/ass/ass.h" 2>/dev/null && echo "ass.h EXISTS" || echo "ass.h MISSING"
-
 BUILD_DIR=build-ios
 rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
-
-# Create temporary pkg-config wrapper to help with libass detection
-cat > /tmp/pkg-config-wrapper <<EOF
-#!/bin/bash
-IOS_PREFIX="$IOS_PREFIX"
-if [[ "\$1" == "--exists" && "\$2" == "libass" ]]; then
-    if [[ -f "\$IOS_PREFIX/lib/libass.a" && -f "\$IOS_PREFIX/include/ass/ass.h" ]]; then
-        exit 0
-    else
-        exit 1
-    fi
-elif [[ "\$1" == "--modversion" && "\$2" == "libass" ]]; then
-    echo "0.17.0"
-    exit 0
-elif [[ "\$1" == "--cflags" && "\$2" == "libass" ]]; then
-    echo "-I\$IOS_PREFIX/include"
-    exit 0
-elif [[ "\$1" == "--libs" && "\$2" == "libass" ]]; then
-    echo "-L\$IOS_PREFIX/lib -lass -lfribidi -lfreetype"
-    exit 0
-else
-    exec pkg-config "\$@"
-fi
-EOF
-chmod +x /tmp/pkg-config-wrapper
-
-# Temporarily override PKG_CONFIG
-export PKG_CONFIG=/tmp/pkg-config-wrapper
 pushd "$BUILD_DIR" >/dev/null
 
 ../configure \
@@ -83,7 +40,6 @@ pushd "$BUILD_DIR" >/dev/null
   --strip="$STRIP" \
   --extra-cflags="$CFLAGS -I$IOS_PREFIX/include" \
   --extra-ldflags="$LDFLAGS -L$IOS_PREFIX/lib" \
-  --extra-libs="-lass -lfribidi -lfreetype -lm" \
   --pkg-config-flags="--static" \
   --enable-static \
   --disable-shared \
@@ -101,7 +57,8 @@ pushd "$BUILD_DIR" >/dev/null
   --enable-libvpx \
   --enable-libaom \
   --enable-libopus \
-  --enable-libass \
+  --disable-libass \
+  --disable-libmp3lame \
   --enable-encoder=libx264 \
   --enable-encoder=libx265 \
   --enable-encoder=libvpx_vp8 \
@@ -116,7 +73,6 @@ pushd "$BUILD_DIR" >/dev/null
   --enable-decoder=vp9 \
   --enable-decoder=av1 \
   --enable-decoder=opus \
-  --enable-decoder=mp3 \
   --enable-decoder=aac \
   --enable-muxer=mp4 \
   --enable-muxer=mov \
