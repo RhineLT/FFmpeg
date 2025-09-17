@@ -19,7 +19,14 @@ export CXXFLAGS="$CFLAGS"
 export LDFLAGS="-arch arm64 -isysroot ${IOS_SDK_PATH} -mios-version-min=${IOS_MIN_VERSION}"
 
 export PKG_CONFIG_PATH="$IOS_PREFIX/lib/pkgconfig"
+export PKG_CONFIG_LIBDIR="$IOS_PREFIX/lib/pkgconfig"
 export PATH="$PATH:$IOS_PREFIX/bin"
+
+echo "[ffmpeg] Pkg-config environment:"
+echo "  PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
+echo "  PKG_CONFIG_LIBDIR=$PKG_CONFIG_LIBDIR"
+echo "[ffmpeg] Available pkg-config packages:"
+pkg-config --list-all | grep -E "(aom|x265|x264|vpx|opus)" || echo "  None found"
 
 NPROC=$(sysctl -n hw.ncpu || echo 4)
 
