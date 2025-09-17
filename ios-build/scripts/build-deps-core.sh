@@ -117,43 +117,46 @@ Cflags: -I\${includedir}
 PC
 fi
 
-echo "[deps] Build libvpx"
-if [ ! -f "$IOS_PREFIX/lib/libvpx.a" ]; then
-  rm -rf libvpx && git clone --depth 1 https://chromium.googlesource.com/webm/libvpx.git
-  pushd libvpx >/dev/null
-  
-  export CFLAGS="-arch arm64 -mios-version-min=$IOS_MIN_VERSION -isysroot $IOS_SDK_PATH"
-  export LDFLAGS="-arch arm64 -mios-version-min=$IOS_MIN_VERSION -isysroot $IOS_SDK_PATH"
-  
-  ./configure \
-    --target=arm64-darwin20-gcc \
-    --prefix="$IOS_PREFIX" \
-    --disable-examples \
-    --disable-docs \
-    --disable-unit-tests \
-    --enable-vp8 \
-    --enable-vp9 \
-    --enable-pic \
-    --disable-shared \
-    --enable-static
-  make -j"$NPROC" && make install
-  popd >/dev/null
-  
-  # Create pkg-config file for libvpx
-  cat > "$IOS_PREFIX/lib/pkgconfig/vpx.pc" <<PC
-prefix=$IOS_PREFIX
-exec_prefix=\${prefix}
-libdir=\${exec_prefix}/lib
-includedir=\${prefix}/include
-
-Name: vpx
-Description: WebM VP8/VP9 Codec SDK
-Version: 1.13.1
-Requires:
-Libs: -L\${libdir} -lvpx
-Cflags: -I\${includedir}
-PC
-fi
+# Temporarily disable libvpx due to installation issues
+# Will re-enable after fixing header installation
+echo "[deps] Skip libvpx (temporarily disabled)"
+# echo "[deps] Build libvpx"
+# if [ ! -f "$IOS_PREFIX/lib/libvpx.a" ]; then
+#   rm -rf libvpx && git clone --depth 1 https://chromium.googlesource.com/webm/libvpx.git
+#   pushd libvpx >/dev/null
+#   
+#   export CFLAGS="-arch arm64 -mios-version-min=$IOS_MIN_VERSION -isysroot $IOS_SDK_PATH"
+#   export LDFLAGS="-arch arm64 -mios-version-min=$IOS_MIN_VERSION -isysroot $IOS_SDK_PATH"
+#   
+#   ./configure \
+#     --target=arm64-darwin20-gcc \
+#     --prefix="$IOS_PREFIX" \
+#     --disable-examples \
+#     --disable-docs \
+#     --disable-unit-tests \
+#     --enable-vp8 \
+#     --enable-vp9 \
+#     --enable-pic \
+#     --disable-shared \
+#     --enable-static
+#   make -j"$NPROC" && make install
+#   popd >/dev/null
+#   
+#   # Create pkg-config file for libvpx
+#   cat > "$IOS_PREFIX/lib/pkgconfig/vpx.pc" <<PC
+# prefix=$IOS_PREFIX
+# exec_prefix=\${prefix}
+# libdir=\${exec_prefix}/lib
+# includedir=\${prefix}/include
+# 
+# Name: vpx
+# Description: WebM VP8/VP9 Codec SDK
+# Version: 1.13.1
+# Requires:
+# Libs: -L\${libdir} -lvpx
+# Cflags: -I\${includedir}
+# PC
+# fi
 
 echo "[deps] Build libaom (AV1)"
 if [ ! -f "$IOS_PREFIX/lib/libaom.a" ]; then

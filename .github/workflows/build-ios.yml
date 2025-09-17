@@ -38,10 +38,15 @@ jobs:
           chmod +x ios-build/scripts/build-deps-core.sh
           ./ios-build/scripts/build-deps-core.sh
 
-      - name: "Build FFmpeg"
+      - name: "Build FFmpeg libraries"
         run: |
           chmod +x ios-build/scripts/build-ffmpeg-libs.sh
           ./ios-build/scripts/build-ffmpeg-libs.sh
+
+      - name: "Build FFmpeg tools"
+        run: |
+          chmod +x ios-build/scripts/build-ffmpeg-tools.sh
+          ./ios-build/scripts/build-ffmpeg-tools.sh
 
       - name: Package artifacts
         shell: bash

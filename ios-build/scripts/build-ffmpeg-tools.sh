@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[ffmpeg] Build FFmpeg libraries only (iOS)"
+echo "[tools] Build FFmpeg command-line tools for iOS"
 
 : "${XCODE_PATH:?XCODE_PATH missing}"
 : "${IOS_SDK_PATH:?IOS_SDK_PATH missing}"
@@ -22,12 +22,6 @@ export PKG_CONFIG_PATH="$IOS_PREFIX/lib/pkgconfig"
 export PKG_CONFIG_LIBDIR="$IOS_PREFIX/lib/pkgconfig"
 export PATH="$PATH:$IOS_PREFIX/bin"
 
-echo "[ffmpeg] Pkg-config environment:"
-echo "  PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
-echo "  PKG_CONFIG_LIBDIR=$PKG_CONFIG_LIBDIR"
-echo "[ffmpeg] Available pkg-config packages:"
-pkg-config --list-all | grep -E "(aom|x265|x264|vpx|opus)" || echo "  None found"
-
 NPROC=$(sysctl -n hw.ncpu || echo 4)
 
 workdir=$(pwd)
@@ -42,30 +36,17 @@ fetch() {
   fi
 }
 
-echo "[ffmpeg] Download FFmpeg 8.0"
-if [ ! -d "ffmpeg" ]; then
+echo "[tools] Download FFmpeg 8.0 (for tools)"
+if [ ! -d "ffmpeg-tools" ]; then
   rm -f ffmpeg-8.0.tar.xz
   fetch "https://ffmpeg.org/releases/ffmpeg-8.0.tar.xz" "ffmpeg-8.0.tar.xz"
   tar -xf ffmpeg-8.0.tar.xz
-  mv ffmpeg-8.0 ffmpeg
+  mv ffmpeg-8.0 ffmpeg-tools
 fi
 
-cd ffmpeg
+cd ffmpeg-tools
 
-# Test compiler first
-echo "[ffmpeg] Test compiler"
-cat > test.c <<'EOF'
-int main() { return 0; }
-EOF
-
-if ! "$CC" $CFLAGS $LDFLAGS test.c -o test; then
-  echo "ERROR: Compiler test failed"
-  exit 1
-fi
-rm -f test test.c
-echo "Compiler test OK"
-
-echo "[ffmpeg] Configure for static libraries only - Core codecs only"
+echo "[tools] Configure for command-line tools"
 ./configure \
   --prefix="$IOS_PREFIX" \
   --arch=arm64 \
@@ -83,7 +64,7 @@ echo "[ffmpeg] Configure for static libraries only - Core codecs only"
   --pkg-config-flags="--static" \
   --disable-shared \
   --enable-static \
-  --disable-programs \
+  --enable-programs \
   --disable-debug \
   --disable-doc \
   --disable-network \
@@ -100,33 +81,35 @@ echo "[ffmpeg] Configure for static libraries only - Core codecs only"
   --enable-libaom \
   --enable-libopus || { cat ffbuild/config.log; exit 1; }
 
-echo "[ffmpeg] Build libraries"
-make -j"$NPROC"
+echo "[tools] Build command-line tools"
+make -j"$NPROC" ffmpeg_g ffprobe_g ffplay_g
 
-echo "[ffmpeg] Install libraries"
-make install
+echo "[tools] Strip and install binaries"
+mkdir -p "$IOS_PREFIX/bin"
 
-echo "[ffmpeg] Build simple test program"
-cat > test_ffmpeg.c <<'EOF'
-#include <libavcodec/avcodec.h>
-#include <libavformat/avformat.h>
-#include <stdio.h>
-
-int main() {
-    printf("FFmpeg version: %s\n", av_version_info());
-    return 0;
-}
-EOF
-
-if "$CC" $CFLAGS test_ffmpeg.c -L"$IOS_PREFIX/lib" -lavformat -lavcodec -lavutil $LDFLAGS -o test_ffmpeg; then
-  echo "✅ FFmpeg test program compiled successfully"
-  ls -la test_ffmpeg
-  file test_ffmpeg
+if [ -f ffmpeg_g ]; then
+  "$STRIP" ffmpeg_g -o "$IOS_PREFIX/bin/ffmpeg"
+  echo "✅ ffmpeg tool built"
 else
-  echo "❌ FFmpeg test program failed"
+  echo "❌ ffmpeg tool failed"
 fi
 
-echo "[ffmpeg] Verify installation"
-ls -la "$IOS_PREFIX/lib/libav"*.a || true
-ls -la "$IOS_PREFIX/include/libav"* || true
-echo "Libraries built successfully!"
+if [ -f ffprobe_g ]; then
+  "$STRIP" ffprobe_g -o "$IOS_PREFIX/bin/ffprobe"
+  echo "✅ ffprobe tool built"
+else
+  echo "❌ ffprobe tool failed"
+fi
+
+if [ -f ffplay_g ]; then
+  "$STRIP" ffplay_g -o "$IOS_PREFIX/bin/ffplay"
+  echo "✅ ffplay tool built"
+else
+  echo "❌ ffplay tool failed"
+fi
+
+echo "[tools] Verify tools"
+ls -la "$IOS_PREFIX/bin/ff"* || true
+file "$IOS_PREFIX/bin/ff"* || true
+
+echo "Command-line tools built successfully!"
