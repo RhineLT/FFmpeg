@@ -163,7 +163,9 @@ if [ ! -f "$IOS_PREFIX/lib/libopus.a" ]; then
     --host=arm-apple-darwin \
     --prefix="$IOS_PREFIX" \
     --enable-static \
-    --disable-shared
+    --disable-shared \
+    --disable-asm \
+    --disable-intrinsics
   make -j"$NPROC" && make install
   # Ensure opus headers are accessible at include root level
   if [ -d "$IOS_PREFIX/include/opus" ]; then
