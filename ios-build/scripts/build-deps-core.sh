@@ -274,9 +274,25 @@ if [ ! -f "$IOS_PREFIX/lib/libfreetype.a" ]; then
     --enable-static \
     --without-png \
     --without-bzip2 \
-    --without-harfbuzz
+    --without-harfbuzz \
+    --without-zlib \
+    --without-brotli
   make -j"$NPROC" && make install
   popd >/dev/null
+  
+  # Create custom pkg-config file without problematic dependencies
+  cat > "$IOS_PREFIX/lib/pkgconfig/freetype2.pc" <<PC
+prefix=$IOS_PREFIX
+exec_prefix=\${prefix}
+libdir=\${exec_prefix}/lib
+includedir=\${prefix}/include/freetype2
+
+Name: FreeType 2
+Description: A free, high-quality, and portable font engine.
+Version: 2.13.2
+Libs: -L\${libdir} -lfreetype
+Cflags: -I\${includedir}
+PC
 fi
 
 # 暂时跳过fribidi和libass，它们有复杂的交叉编译依赖
